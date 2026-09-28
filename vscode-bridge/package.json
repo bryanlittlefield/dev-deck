@@ -1,0 +1,47 @@
+{
+  "name": "devdeck-bridge",
+  "displayName": "DUO87 Dev Deck Bridge",
+  "description": "Shows Claude Code sessions from Remote-SSH, Codespaces and containers on the DUO87 Play Deck touch screen.",
+  "version": "1.0.0",
+  "publisher": "duo87",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "extensionKind": [
+    "ui"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "duo87.bridge.status",
+        "title": "DUO87 Dev Deck: Show Bridge Status"
+      }
+    ],
+    "configuration": {
+      "title": "DUO87 Dev Deck",
+      "properties": {
+        "duo87.remoteStateDir": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Where the remote keeps its Dev Deck state, e.g. `/home/me/.duo87/state`. Leave empty to find it automatically."
+        }
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bryanlittlefield/dev-deck.git"
+  },
+  "homepage": "https://bryanlittlefield.github.io/dev-deck/"
+}

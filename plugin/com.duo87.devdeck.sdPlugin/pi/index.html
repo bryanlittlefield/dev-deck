@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Dev Deck settings</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; padding: 10px 12px 16px; background: transparent; color: #d7dbe0;
+      font: 12px/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+    h1 { font-size: 13px; margin: 0 0 4px; color: #fff; }
+    .about { color: #9aa1a9; margin: 0 0 12px; }
+    .row { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 9px; }
+    .row > label { flex: 0 0 96px; padding-top: 5px; color: #b9bfc6; text-align: right; }
+    .row > .field { flex: 1; min-width: 0; }
+    input[type=text], textarea, select { width: 100%; box-sizing: border-box; background: #3a3d42; color: #eef0f2;
+      border: 1px solid #4a4e55; border-radius: 4px; padding: 5px 7px; font: inherit; }
+    textarea { min-height: 92px; resize: vertical; }
+    input[type=checkbox] { margin: 6px 6px 0 0; }
+    .hint { color: #8b929a; font-size: 11px; margin-top: 3px; }
+    code { background: #2c2f33; padding: 0 3px; border-radius: 3px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1 id="title">Dev Deck</h1>
+  <p class="about" id="about"></p>
+  <div id="fields"></div>
+  <script src="pi.js"></script>
+</body>
+</html>

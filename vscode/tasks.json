@@ -1,0 +1,47 @@
+{
+  // DUO87 Dev Deck user tasks. They run where the workspace is: on your Mac, or on the SSH host /
+  // codespace in a remote window (${userHome} is then the remote home; see `duo87 remote`).
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "DUO87: Smart Commit",
+      "type": "shell",
+      "command": "${userHome}/.duo87/bin/duo87-node",
+      "args": ["${userHome}/.duo87/bin/smart-commit", "${workspaceFolder}"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true, "showReuseMessage": false }
+    },
+    {
+      "label": "DUO87: Smart Commit + Push",
+      "type": "shell",
+      "command": "${userHome}/.duo87/bin/duo87-node",
+      "args": ["${userHome}/.duo87/bin/smart-commit", "${workspaceFolder}", "--push"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true, "showReuseMessage": false }
+    },
+    {
+      "label": "DUO87: Create PR",
+      "type": "shell",
+      "command": "gh pr create --web",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true, "focus": true }
+    },
+    {
+      "label": "DUO87: View PR",
+      "type": "shell",
+      "command": "gh pr view --web || gh pr list --web",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "DUO87: Open on GitHub",
+      "type": "shell",
+      "command": "gh browse",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent", "panel": "dedicated", "clear": true }
+    }
+  ]
+}

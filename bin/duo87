@@ -1,0 +1,751 @@
+#!/usr/bin/env node
+// duo87 — build and install the Womier DUO87 Play Deck developer setup.
+//
+//   duo87 install   build everything, then install the Dev Deck plugin + Dev profile into the
+//                   Play Deck app, merge VS Code keybindings/tasks and the Claude Code hook
+//   duo87 build     render images and generate the Dev profile only (touches no apps)
+//   duo87 doctor    check that every piece is in place
+//   duo87 status    show what the Play Deck sees (Claude sessions, last smart commit)
+//   duo87 guide     regenerate the interactive guide (docs/index.html) from the current layout
+//   duo87 hooks     (re)register the Claude Code status hook in ~/.claude/settings.json
+//   duo87 vscode    (re)merge the VS Code keybindings and user tasks
+//   duo87 bridge    (re)install the VS Code bridge that mirrors SSH/Codespaces Claude sessions
+//   duo87 remote <ssh-host> [--force] [--dry-run]   install the remote kit on a Remote-SSH host
+//   duo87 codespace <name> [--dry-run]               install the remote kit in a running codespace
+//   duo87 kit [dir] export the remote kit (e.g. into a Codespaces dotfiles repo)
+//
+// Anything it changes is backed up first to ~/.duo87/backups/<timestamp>/.
+// Dev Deck lives in ~/.duo87 (clone https://github.com/bryanlittlefield/dev-deck there).
+'use strict';
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const crypto = require('crypto');
+const { spawnSync } = require('child_process');
+
+const HOME = os.homedir();
+const DUO = path.join(HOME, '.duo87');
+const APP = '/Applications/DUO87_Play_Deck.app';
+const APP_NAME = 'DUO87_Play_Deck';
+const SD = path.join(HOME, 'Library/Application Support/HotSpot/StreamDock');
+const SD_PLUGINS = path.join(SD, 'plugins');
+const SD_PROFILES = path.join(SD, 'profiles');
+const SD_CONFIG = path.join(SD, 'config/StreamDockConfig.plist');
+const PLUGIN_ID = 'com.duo87.devdeck.sdPlugin';
+const PLUGIN_SRC = path.join(DUO, 'plugin', PLUGIN_ID);
+const BUILD = path.join(DUO, 'build');
+const LAYOUT = path.join(DUO, 'profile/layout.json');
+const IDS_FILE = path.join(DUO, 'profile/ids.json');
+const PLUGIN_LOG = path.join(DUO, 'logs/plugin.log');
+const VSCODE_USER = path.join(HOME, 'Library/Application Support/Code/User');
+const CLAUDE_SETTINGS = path.join(HOME, '.claude/settings.json');
+const HOOK_CMD = `node "${path.join(DUO, 'bin/claude-status-hook.js')}"`;
+const HOOK_EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
+  'PostToolUseFailure', 'PermissionRequest', 'Notification', 'Stop', 'StopFailure', 'SubagentStop'];
+const MAGICK = ['/opt/homebrew/bin/magick', '/usr/local/bin/magick'].find((p) => fs.existsSync(p));
+
+// The plugin, the Claude hook and the VS Code tasks all look for Dev Deck in ~/.duo87.
+const realpath = (p) => { try { return fs.realpathSync(p); } catch { return p; } };
+if (realpath(path.resolve(__dirname, '..')) !== realpath(DUO)) {
+  console.error(`✗ Dev Deck must live in ${DUO}, but this copy is in ${path.resolve(__dirname, '..')}.`);
+  console.error('  git clone https://github.com/bryanlittlefield/dev-deck.git ~/.duo87');
+  process.exit(1);
+}
+
+const render = require(path.join(PLUGIN_SRC, 'plugin/render.js'));
+
+const ACTION_NAMES = {
+  status: 'Claude Status', view: 'Claude Prompt / Reply', answer: 'Answer Claude', focus: 'Focus Claude',
+  prompt: 'Claude Prompt', commit: 'Smart Commit', repo: 'Repo Status', banner: 'Wide Display', keys: 'Shortcut',
+  shell: 'Run Command',
+};
+const ACTION_ICONS = {
+  status: ['spark', 'claude'], view: ['message', 'blue'], answer: ['check', 'green'], focus: ['spark', 'claude'],
+  prompt: ['message', 'claude'], commit: ['commit', 'green'], repo: ['branch', 'amber'], banner: ['wide', 'green'],
+  keys: ['keyboard', 'blue'], shell: ['terminal', 'teal'],
+};
+const NATIVE = {
+  'page.next': { uuid: 'com.hotspot.streamdock.page.next', name: 'Next page', label: 'Next', icon: 'next', settings: () => ({}) },
+  'page.previous': { uuid: 'com.hotspot.streamdock.page.previous', name: 'Previous page', label: 'Back', icon: 'prev', settings: () => ({}) },
+  'page.goto': { uuid: 'com.hotspot.streamdock.page.goto', name: 'Go to page', label: 'Page 1', icon: 'first', settings: (k) => ({ PageIndex: k.pageIndex || 1 }) },
+  scene: { uuid: 'com.hotspot.streamdock.profile.rotate', name: 'Scene Shift', label: 'Profiles', icon: 'layers', settings: () => ({ DeviceUUID: '', ProfileUUID: '' }) },
+};
+
+// The DUO87 screen is portrait, 3 keys across and 4 down. The app stores keys as "column,row"
+// on a 4x3 grid and fills the screen from it in reading order, so screen row y, key x is app
+// key number y*3+x. layout.json uses screen rows; this converts.
+let DECK = {};
+try { DECK = JSON.parse(fs.readFileSync(path.join(DUO, 'config.json'), 'utf8')).deck || {}; } catch {}
+const SCREEN = { columns: DECK.screenColumns || 3, rows: Math.ceil(12 / (DECK.screenColumns || 3)) };
+const APP_COLUMNS = 4;
+const appPos = (x, y) => { const i = y * SCREEN.columns + x; return `${i % APP_COLUMNS},${Math.floor(i / APP_COLUMNS)}`; };
+const screenPos = (pos) => { const [c, r] = pos.split(',').map(Number); const i = r * APP_COLUMNS + c; return { x: i % SCREEN.columns, y: Math.floor(i / SCREEN.columns) }; };
+
+const say = (m) => console.log(m);
+const ok = (m) => console.log(`  ✓ ${m}`);
+const warn = (m) => console.log(`  ! ${m}`);
+const sh = (cmd, args, opts = {}) => spawnSync(cmd, args, { encoding: 'utf8', ...opts });
+const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const readJson = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
+const writeJson = (f, v) => fs.writeFileSync(f, JSON.stringify(v, null, 2) + '\n');
+
+let backupDir = null;
+function backup(target) {
+  if (!fs.existsSync(target)) return;
+  if (!backupDir) backupDir = path.join(DUO, 'backups', new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19));
+  const rel = path.relative(HOME, target).replace(/[/ ]/g, '_');
+  fs.mkdirSync(backupDir, { recursive: true });
+  fs.cpSync(target, path.join(backupDir, rel), { recursive: true });
+}
+
+// JSON with comments and trailing commas (VS Code files).
+function readJsonc(file) {
+  const text = fs.readFileSync(file, 'utf8');
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      out += c;
+      if (c === '\\') { out += text[++i] || ''; } else if (c === '"') inString = false;
+    } else if (c === '"') { inString = true; out += c; }
+    else if (c === '/' && text[i + 1] === '/') { while (i < text.length && text[i] !== '\n') i++; out += '\n'; }
+    else if (c === '/' && text[i + 1] === '*') { i += 2; while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++; i++; }
+    else out += c;
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1') || 'null');
+}
+
+// ---------------------------------------------------------------------------------------------
+// Images
+
+function svgsToPngs(items) {
+  if (!items.length) return;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'duo87-svg-'));
+  const files = items.map((item, i) => {
+    const f = path.join(tmp, `k${i}.svg`);
+    // Drawn at double size: Quick Look (WebKit) renders SVG faithfully, but a little smaller than
+    // the thumbnail, into its top-left corner, on white. The drawing is cut out and scaled down.
+    fs.writeFileSync(f, item.svg.replace('width="144" height="144"', 'width="288" height="288"'));
+    return f;
+  });
+  for (let i = 0; i < files.length; i += 40) sh('qlmanage', ['-t', '-s', '576', '-o', tmp, ...files.slice(i, i + 40)]);
+  items.forEach((item, i) => {
+    const png = `${files[i]}.png`;
+    if (!fs.existsSync(png)) throw new Error(`Quick Look did not render ${path.basename(files[i])}`);
+    fs.mkdirSync(path.dirname(item.out), { recursive: true });
+    const size = item.size || 144;
+    const r = MAGICK
+      ? sh(MAGICK, [png, '-bordercolor', 'white', '-border', '1', '-fuzz', '8%', '-trim', '+repage', '-resize', `${size}x${size}!`, item.out])
+      // Without ImageMagick: Quick Look draws a 288 px SVG into 552 px. sips treats a 0,0 offset as
+      // "center"; 1,1 is the top-left.
+      : sh('sips', ['--cropToHeightWidth', '552', '552', '--cropOffset', '1', '1', '-z', String(size), String(size), png, '--out', item.out]);
+    if (r.status !== 0) throw new Error(`could not write ${item.out}: ${r.stderr}`);
+  });
+}
+
+function buildPluginImages() {
+  // The plugin reads git through the same module as the hook.
+  fs.copyFileSync(path.join(DUO, 'bin/git-info.js'), path.join(PLUGIN_SRC, 'plugin/git-info.js'));
+  const img = path.join(PLUGIN_SRC, 'images');
+  const items = [
+    { svg: render.iconKey({ label: 'Dev Deck', icon: 'spark', color: 'claude' }), out: path.join(img, 'plugin.png') },
+    { svg: render.iconTile('spark', 'claude'), out: path.join(img, 'category.png'), size: 96 },
+  ];
+  for (const [kind, [iconName, colorName]] of Object.entries(ACTION_ICONS)) {
+    items.push({ svg: render.iconTile(iconName, colorName), out: path.join(img, 'actions', `${kind}.png`), size: 80 });
+    items.push({ svg: render.defaultKey(kind, {}), out: path.join(img, 'keys', `${kind}.png`) });
+  }
+  svgsToPngs(items);
+  ok(`plugin images (${items.length})`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Profile
+
+const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const LOWER = 'abcdefghijklmnopqrstuvwxyz0123456789';
+function makeId(seed, charset, groups) {
+  const bytes = crypto.createHash('sha256').update(seed).digest();
+  let i = 0;
+  return groups.map((n) => Array.from({ length: n }, () => charset[bytes[i++ % bytes.length] % charset.length]).join('')).join('-');
+}
+
+// Page folder ids, by page id, kept stable across builds so the app keeps its page state.
+function loadIds(pages) {
+  let ids = {};
+  try { ids = readJson(IDS_FILE); } catch {}
+  if (!ids.profile) ids.profile = makeId(crypto.randomBytes(16).toString('hex'), UPPER, [8, 4, 4, 4, 12]);
+  if (Array.isArray(ids.pages)) ids.pages = Object.fromEntries(ids.pages.map((id, i) => [pages[i] ? pages[i].id : `page${i + 1}`, id]));
+  ids.pages = ids.pages || {};
+  for (const page of pages) {
+    if (!ids.pages[page.id]) ids.pages[page.id] = makeId(`${ids.profile}/page/${page.id}`, UPPER, [8, 4, 4, 4, 12]);
+  }
+  writeJson(IDS_FILE, ids);
+  return ids;
+}
+
+function deviceInfo() {
+  let serial = '';
+  let model = '20GBA9901';
+  try {
+    const m = fs.readFileSync(SD_CONFIG, 'utf8').match(/DUO87Device\\SerialNumber=(\S+)/);
+    if (m) serial = m[1];
+  } catch {}
+  try {
+    for (const dir of fs.readdirSync(SD_PROFILES)) {
+      const man = readJson(path.join(SD_PROFILES, dir, 'manifest.json'));
+      if (man.DeviceUUID === 'DUO87Device' && man.DeviceModel) {
+        model = man.DeviceModel;
+        serial = serial || man.DeviceSerialNumber || '';
+        break;
+      }
+    }
+  } catch {}
+  return { serial, model };
+}
+
+// Page order: keep the order you set in the app, and any pages you added there; pages new to
+// layout.json go at the end.
+function pageOrder(ids, pages) {
+  const ours = pages.map((p) => ids.pages[p.id]);
+  const root = path.join(SD_PROFILES, `${ids.profile}.sdProfile`);
+  let installed = [];
+  let current = '';
+  try {
+    const man = readJson(path.join(root, 'manifest.json'));
+    installed = ((man.Pages || {}).Pages || []).map((p) => String(p).replace(/\.sdProfile$/, ''));
+    current = String((man.Pages || {}).Current || '').replace(/\.sdProfile$/, '');
+  } catch {}
+  const order = installed.filter((id, i) => installed.indexOf(id) === i
+    && (ours.includes(id) || fs.existsSync(path.join(root, 'profiles', `${id}.sdProfile`))));
+  for (const id of ours) if (!order.includes(id)) order.push(id);
+  return { order, current: order.includes(current) ? current : ours[0] };
+}
+
+// Keys of a page as { x, y, key } on the screen. Pages use "rows" (screen rows of 3, top to
+// bottom); older layouts used "keys" with the app's "column,row".
+function screenKeys(page) {
+  const out = [];
+  if (Array.isArray(page.rows)) {
+    if (page.rows.length > SCREEN.rows) throw new Error(`page "${page.name}" has ${page.rows.length} rows; the screen has ${SCREEN.rows}`);
+    page.rows.forEach((row, y) => {
+      if (row.length > SCREEN.columns) throw new Error(`page "${page.name}" row ${y + 1} has ${row.length} keys; the screen has ${SCREEN.columns} per row`);
+      row.forEach((key, x) => { if (key) out.push({ x, y, key }); });
+    });
+    return out;
+  }
+  for (const [pos, key] of Object.entries(page.keys || {})) {
+    if (!/^\d+,\d+$/.test(pos)) throw new Error(`page "${page.name}": bad key position "${pos}" (use "column,row")`);
+    out.push({ ...screenPos(pos), key });
+  }
+  return out;
+}
+
+// Wide displays: banner keys side by side in a row. Each gets its slot so its default image is
+// the right slice (the plugin regroups them live from the app's key coordinates).
+function bannerSlots(keys) {
+  const slots = new Map();
+  for (let y = 0; y < SCREEN.rows; y++) {
+    const row = keys.filter((k) => k.y === y && k.key.action === 'banner').sort((a, b) => a.x - b.x);
+    let run = [];
+    const flush = () => { run.forEach((k, i) => slots.set(k, { y, slot: i, of: run.length })); run = []; };
+    for (const k of row) { if (run.length && k.x !== run[run.length - 1].x + 1) flush(); run.push(k); }
+    flush();
+  }
+  return slots;
+}
+
+function buildProfile() {
+  const layout = readJson(LAYOUT);
+  const pages = layout.pages.map((p, i) => ({ ...p, id: p.id || `page${i + 1}` }));
+  const ids = loadIds(pages);
+  const device = deviceInfo();
+  const { order, current } = pageOrder(ids, pages);
+  const pageAt = (folder) => pages.find((p) => ids.pages[p.id] === folder);
+  const out = path.join(BUILD, 'profile');
+  fs.rmSync(out, { recursive: true, force: true });
+  const root = path.join(out, `${ids.profile}.sdProfile`);
+  fs.mkdirSync(path.join(root, 'Images'), { recursive: true });
+  const images = [];
+  const summary = [];
+
+  // Page keys: label them with the page they go to, in the final page order. "Next" on the last
+  // page and "previous" on the first wrap around (as go-to keys), so every page leads on.
+  function navigation(key, page) {
+    const here = order.indexOf(ids.pages[page.id]);
+    const describe = (index, extra = {}) => {
+      const target = pageAt(order[index]);
+      return { label: target ? target.name : `Page ${index + 1}`, sub: `Page ${index + 1}`, pageIndex: index + 1, ...extra };
+    };
+    if (key.native === 'page.next') {
+      return here + 1 < order.length ? describe(here + 1, { icon: 'next' }) : describe(0, { native: 'page.goto', icon: 'first' });
+    }
+    if (key.native === 'page.previous') {
+      return here > 0 ? describe(here - 1, { icon: 'prev' }) : describe(order.length - 1, { native: 'page.goto', icon: 'prev' });
+    }
+    if (key.native === 'page.goto') {
+      const index = typeof key.page === 'string' ? order.indexOf(ids.pages[key.page]) : (key.page || 1) - 1;
+      if (index < 0 || index >= order.length) throw new Error(`page "${page.name}": go-to key points at unknown page "${key.page}"`);
+      return describe(index, { icon: 'first' });
+    }
+    return {};
+  }
+
+  for (const page of pages) {
+    const pageId = ids.pages[page.id];
+    const pageDir = path.join(root, 'profiles', `${pageId}.sdProfile`);
+    fs.mkdirSync(path.join(pageDir, 'Images'), { recursive: true });
+    const actions = {};
+    const keys = screenKeys(page);
+    const slots = bannerSlots(keys);
+    const grid = Array.from({ length: SCREEN.rows }, () => Array(SCREEN.columns).fill('·'));
+    for (const k of keys) {
+      const { key } = k;
+      const pos = appPos(k.x, k.y);
+      let svg;
+      let entry;
+      if (key.action) {
+        const kind = key.action;
+        if (!ACTION_NAMES[kind]) throw new Error(`page "${page.name}" row ${k.y + 1}: unknown action "${kind}"`);
+        const settings = { ...(key.settings || {}) };
+        if (kind === 'banner') {
+          const slot = slots.get(k);
+          Object.assign(settings, { show: settings.show || 'git', group: `${page.id}-${slot.y}`, slot: slot.slot });
+          svg = render.gitBanner({ project: 'repo', branch: 'branch', upstream: 'origin/branch' }, { count: slot.of })[slot.slot];
+        } else svg = render.defaultKey(kind, settings);
+        entry = { Name: ACTION_NAMES[kind], Settings: settings, UUID: `com.duo87.devdeck.${kind}` };
+        grid[k.y][k.x] = kind === 'banner' ? '[wide]' : String(settings.label || ACTION_NAMES[kind]).replace(/\n/g, ' ');
+      } else if (key.native) {
+        if (!NATIVE[key.native]) throw new Error(`page "${page.name}" row ${k.y + 1}: unknown native action "${key.native}"`);
+        const nav = navigation(key, page);
+        const n = NATIVE[nav.native || key.native];
+        svg = render.iconKey({ label: key.label || nav.label || n.label, icon: key.icon || nav.icon || n.icon, color: key.color || 'gray',
+          sub: key.sub != null ? key.sub : (nav.sub || '') });
+        entry = { Name: n.name, Settings: n.settings({ ...key, pageIndex: nav.pageIndex }), UUID: n.uuid };
+        grid[k.y][k.x] = `→ ${key.label || nav.label || n.label}`;
+      } else {
+        throw new Error(`page "${page.name}" row ${k.y + 1}: needs "action" or "native"`);
+      }
+      const image = makeId(`${pageId}/${pos}/${svg}`, UPPER, [27]) + '.png';
+      images.push({ svg, out: path.join(pageDir, 'Images', image) });
+      actions[pos] = {
+        ActionID: makeId(`${pageId}/${pos}`, LOWER, [8, 4, 4, 4, 12]),
+        Controller: 'Keypad',
+        Name: entry.Name,
+        Settings: entry.Settings,
+        State: 0,
+        States: [{ Image: image, Title: '' }],
+        UUID: entry.UUID,
+      };
+    }
+    writeJson(path.join(pageDir, 'manifest.json'), {
+      Actions: actions, DeviceModel: device.model, DeviceUUID: 'DUO87Device', Name: '', Version: '1.0',
+    });
+    summary.push({ page, grid });
+  }
+
+  const manifest = (pageIds, currentId) => ({
+    Actions: {},
+    AppIdentifier: '',
+    DeviceModel: device.model,
+    DeviceSerialNumber: device.serial,
+    DeviceUUID: 'DUO87Device',
+    Name: layout.name || 'Dev Deck',
+    // The app refers to pages by folder name, suffix included.
+    Pages: { Current: `${currentId}.sdProfile`, Pages: pageIds.map((id) => `${id}.sdProfile`) },
+    Version: '1.0',
+  });
+  svgsToPngs(images);
+
+  // Importable package (double-click it, or use the app's import) — handy as a backup too. It
+  // lists only the pages it contains.
+  const ours = pages.map((p) => ids.pages[p.id]);
+  writeJson(path.join(root, 'manifest.json'), manifest(order.filter((id) => ours.includes(id)), ours.includes(current) ? current : ours[0]));
+  const pkg = path.join(DUO, 'profile', `${layout.name || 'Dev Deck'}.streamDockProfile`);
+  fs.rmSync(pkg, { force: true });
+  const z = sh('zip', ['-r', '-X', '-q', pkg, '.'], { cwd: root });
+  if (z.status !== 0) warn(`could not create ${pkg}: ${z.stderr}`);
+  // What gets installed: every page in your order, extra pages you added in the app included.
+  writeJson(path.join(root, 'manifest.json'), manifest(order, current));
+
+  ok(`Dev profile: ${pages.length} pages, ${images.length} keys → ${path.relative(HOME, pkg)}`);
+  order.forEach((id, i) => {
+    const s = summary.find((x) => ids.pages[x.page.id] === id);
+    if (!s) return say(`    page ${i + 1}: (a page you added in the app — kept as is)`);
+    say(`    page ${i + 1}: ${s.page.name}`);
+    s.grid.forEach((row) => say(`      ${row.map((c) => c.slice(0, 15).padEnd(15)).join(' ')}`));
+  });
+  return { root, ids, pkg };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Installing into the apps
+
+function appRunning() {
+  return sh('pgrep', ['-x', APP_NAME]).status === 0;
+}
+
+function quitApp() {
+  if (!appRunning()) return false;
+  sh('osascript', ['-e', `tell application "${APP_NAME}" to quit`], { timeout: 10000 });
+  for (let i = 0; i < 50 && appRunning(); i++) sleep(200);
+  if (appRunning()) {
+    sh('pkill', ['-x', APP_NAME]);
+    for (let i = 0; i < 25 && appRunning(); i++) sleep(200);
+  }
+  sleep(500);
+  return true;
+}
+
+function setActiveProfile(profileId) {
+  let ini = fs.readFileSync(SD_CONFIG, 'utf8');
+  const name = `${profileId}.sdProfile`;
+  ini = ini.replace(/^(sdProfileName=).*$/gm, `$1${name}`)
+    .replace(/^(sdProfilePath=).*$/gm, `$1${path.join(SD_PROFILES, name)}`);
+  fs.writeFileSync(SD_CONFIG, ini);
+}
+
+function mergeHooks() {
+  if (!fs.existsSync(CLAUDE_SETTINGS)) {
+    fs.mkdirSync(path.dirname(CLAUDE_SETTINGS), { recursive: true });
+    fs.writeFileSync(CLAUDE_SETTINGS, '{}\n');
+  }
+  const settings = readJson(CLAUDE_SETTINGS);
+  settings.hooks = settings.hooks || {};
+  const missing = HOOK_EVENTS.filter((ev) => !(settings.hooks[ev] || [])
+    .some((group) => (group.hooks || []).some((h) => String(h.command || '').includes('claude-status-hook.js'))));
+  if (!missing.length) return ok('Claude Code status hook already registered');
+  backup(CLAUDE_SETTINGS);
+  for (const ev of missing) {
+    settings.hooks[ev] = settings.hooks[ev] || [];
+    settings.hooks[ev].push({ matcher: '', hooks: [{ type: 'command', command: HOOK_CMD, async: true }] });
+  }
+  writeJson(CLAUDE_SETTINGS, settings);
+  ok(`Claude Code status hook registered for ${missing.length} events (async, never blocks Claude)`);
+}
+
+function mergeVscode() {
+  fs.mkdirSync(VSCODE_USER, { recursive: true });
+  const kbTemplate = path.join(DUO, 'vscode/keybindings.json');
+  const kbFile = path.join(VSCODE_USER, 'keybindings.json');
+  const ours = readJsonc(kbTemplate);
+  if (!fs.existsSync(kbFile) || !fs.readFileSync(kbFile, 'utf8').trim()) {
+    fs.copyFileSync(kbTemplate, kbFile);
+    ok(`VS Code keybindings (${ours.length}) → ${path.relative(HOME, kbFile)}`);
+  } else {
+    const existing = readJsonc(kbFile) || [];
+    const missing = ours.filter((o) => !existing.some((e) => e.key === o.key && e.command === o.command));
+    const clashes = existing.filter((e) => ours.some((o) => o.key === e.key && o.command !== e.command));
+    clashes.forEach((c) => warn(`keybindings.json already binds ${c.key} to ${c.command}; the Dev Deck binding is added after it and wins`));
+    if (missing.length) {
+      backup(kbFile);
+      // Insert before the closing bracket so the user's comments survive.
+      const text = fs.readFileSync(kbFile, 'utf8');
+      const end = text.lastIndexOf(']');
+      const head = text.slice(0, end).replace(/\s*$/, '');
+      const needsComma = existing.length > 0 && !head.endsWith(',') && !head.endsWith('[');
+      const block = missing.map((b) => `  ${JSON.stringify(b)}`).join(',\n');
+      fs.writeFileSync(kbFile, `${head}${needsComma ? ',' : ''}\n  // DUO87 Dev Deck\n${block}\n${text.slice(end)}`);
+      ok(`VS Code keybindings: added ${missing.length}`);
+    } else ok('VS Code keybindings already present');
+  }
+
+  const taskTemplate = path.join(DUO, 'vscode/tasks.json');
+  const taskFile = path.join(VSCODE_USER, 'tasks.json');
+  const ourTasks = readJsonc(taskTemplate).tasks;
+  const existingTasks = fs.existsSync(taskFile) && fs.readFileSync(taskFile, 'utf8').trim()
+    ? ((readJsonc(taskFile) || {}).tasks || []) : null;
+  if (!existingTasks || existingTasks.every((t) => String(t.label || '').startsWith('DUO87:'))) {
+    // Missing, or holds only Dev Deck tasks: write the template as-is (keeps its comments).
+    const same = existingTasks && JSON.stringify(existingTasks) === JSON.stringify(ourTasks);
+    if (same) ok('VS Code user tasks already up to date');
+    else {
+      if (existingTasks) backup(taskFile);
+      fs.copyFileSync(taskTemplate, taskFile);
+      ok(`VS Code user tasks (${ourTasks.length}) → ${path.relative(HOME, taskFile)}`);
+    }
+  } else {
+    // Mixed with your own tasks: add missing Dev Deck tasks and refresh changed ones by label.
+    const existing = readJsonc(taskFile);
+    let changed = 0;
+    for (const t of ourTasks) {
+      const i = existing.tasks.findIndex((e) => e.label === t.label);
+      if (i < 0) { existing.tasks.push(t); changed += 1; }
+      else if (JSON.stringify(existing.tasks[i]) !== JSON.stringify(t)) { existing.tasks[i] = t; changed += 1; }
+    }
+    if (changed) {
+      backup(taskFile);
+      writeJson(taskFile, existing);
+      ok(`VS Code user tasks: updated ${changed} (comments in tasks.json were not preserved; original backed up)`);
+    } else ok('VS Code user tasks already up to date');
+  }
+}
+
+function waitForPlugin(since) {
+  for (let i = 0; i < 60; i++) {
+    try {
+      const lines = fs.readFileSync(PLUGIN_LOG, 'utf8').trim().split('\n').reverse();
+      const connected = lines.find((l) => l.includes(' connected ') && Date.parse(l.slice(0, 24)) >= since);
+      if (connected) {
+        const ax = lines.find((l) => l.includes('accessibility check:') && Date.parse(l.slice(0, 24)) >= since);
+        if (ax || i > 10) return { connected: true, accessibility: ax ? ax.split('accessibility check: ')[1] : 'unknown' };
+      }
+    } catch {}
+    sleep(500);
+  }
+  return { connected: false };
+}
+
+// What a fresh clone needs before it can build: the plugin's npm dependency and the native key
+// sender (rebuilt when its source changes).
+function setup() {
+  if (!fs.existsSync(path.join(PLUGIN_SRC, 'node_modules/ws'))) {
+    const r = sh('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], { cwd: PLUGIN_SRC, stdio: 'inherit' });
+    if (r.status !== 0) throw new Error('npm install failed in the plugin folder (Node.js with npm is required)');
+    ok('plugin dependencies installed');
+  }
+  const bin = path.join(DUO, 'bin/duo87-keys');
+  const src = path.join(DUO, 'src/duo87-keys.swift');
+  if (!fs.existsSync(bin) || fs.statSync(src).mtimeMs > fs.statSync(bin).mtimeMs) {
+    const r = sh('swiftc', ['-O', '-o', bin, src]);
+    if (r.status !== 0) {
+      throw new Error(`could not build duo87-keys: ${(r.stderr || r.error || '').toString().trim().split('\n')[0]}\n`
+        + '  It needs the Xcode Command Line Tools: xcode-select --install');
+    }
+    ok('built duo87-keys (the native key sender)');
+  }
+}
+
+function install() {
+  if (!fs.existsSync(APP)) throw new Error(`${APP} not found — install the DUO87 Play Deck app first`);
+  setup();
+  say('Building…');
+  buildPluginImages();
+  const built = buildProfile();
+
+  say('Installing…');
+  const wasRunning = quitApp();
+  if (wasRunning) ok('quit the Play Deck app');
+  backup(SD_PROFILES);
+  backup(path.join(SD, 'config'));
+  fs.mkdirSync(SD_PLUGINS, { recursive: true });
+  fs.cpSync(PLUGIN_SRC, path.join(SD_PLUGINS, PLUGIN_ID), { recursive: true, force: true });
+  ok(`plugin → ${path.relative(HOME, path.join(SD_PLUGINS, PLUGIN_ID))}`);
+  fs.cpSync(built.root, path.join(SD_PROFILES, path.basename(built.root)), { recursive: true, force: true });
+  setActiveProfile(built.ids.profile);
+  ok('Dev profile installed and set as the active profile');
+  mergeVscode();
+  mergeHooks();
+  try { installBridge(); } catch (e) { warn(e.message); }
+  if (backupDir) ok(`backups → ${path.relative(HOME, backupDir)}`);
+
+  const since = Date.now();
+  sh('open', ['-g', APP]);
+  say('Starting the Play Deck app…');
+  const result = waitForPlugin(since);
+  if (!result.connected) warn('the plugin has not connected yet — open the Play Deck app and check ~/.duo87/logs/plugin.log');
+  else {
+    ok('Dev Deck plugin is running');
+    if (/not granted/.test(result.accessibility)) {
+      warn('Accessibility is NOT granted to DUO87_Play_Deck — keys that type or press shortcuts will not work yet.');
+      warn('System Settings > Privacy & Security > Accessibility: turn on DUO87_Play_Deck, then quit and reopen it.');
+    } else ok(`accessibility: ${result.accessibility.replace('accessibility: ', '')}`);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Remotes: Remote-SSH hosts, Codespaces, and the VS Code bridge
+
+const KIT_SRC = path.join(DUO, 'remote-kit');
+const BRIDGE_SRC = path.join(DUO, 'vscode-bridge');
+const BRIDGE_ID = 'duo87.devdeck-bridge';
+const CODE = ['/usr/local/bin/code', '/opt/homebrew/bin/code',
+  '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code'].find((p) => fs.existsSync(p));
+
+// A self-contained folder: install.sh + the hook (with its git reader) + smart-commit + the Node launcher.
+function buildKit(dir) {
+  fs.mkdirSync(path.join(dir, 'bin'), { recursive: true });
+  for (const f of ['install.sh', 'setup-remote.js']) fs.copyFileSync(path.join(KIT_SRC, f), path.join(dir, f));
+  for (const f of ['duo87-node', 'claude-status-hook.js', 'git-info.js', 'smart-commit']) {
+    fs.copyFileSync(path.join(DUO, 'bin', f), path.join(dir, 'bin', f));
+  }
+  const cmd = '"$HOME/.duo87/bin/duo87-node" "$HOME/.duo87/bin/claude-status-hook.js"';
+  const hooks = Object.fromEntries(HOOK_EVENTS.map((ev) => [ev, [{ matcher: '', hooks: [{ type: 'command', command: cmd, async: true }] }]]));
+  writeJson(path.join(dir, 'claude-settings.json'), { hooks });
+  fs.writeFileSync(path.join(dir, 'README.txt'),
+    'DUO87 Dev Deck remote kit. Run: sh install.sh\n'
+    + 'For GitHub Codespaces, put this folder in your dotfiles repo and call it from the repo\'s install.sh:\n'
+    + '  sh "$(dirname "$0")/duo87/install.sh"\n');
+  for (const f of ['install.sh', 'bin/duo87-node', 'bin/smart-commit']) fs.chmodSync(path.join(dir, f), 0o755);
+  return dir;
+}
+
+function remoteInstall(kind, target, flags) {
+  if (!target) throw new Error(kind === 'ssh' ? 'usage: duo87 remote <ssh-host> [--force]' : 'usage: duo87 codespace <name>');
+  if (kind === 'ssh' && /prod/i.test(target) && !flags.force) {
+    throw new Error(`"${target}" looks like a production server. The kit adds a hook to that SSH user's `
+      + '~/.claude/settings.json (shared by everyone who logs in as that user). Re-run with --force if you are sure.');
+  }
+  const dir = buildKit(fs.mkdtempSync(path.join(os.tmpdir(), 'duo87-kit-')));
+  const tar = spawnSync('tar', ['-czf', '-', '-C', dir, '.'], { maxBuffer: 50 * 1024 * 1024 });
+  if (tar.status !== 0) throw new Error(`could not pack the kit: ${tar.stderr}`);
+  const remoteCmd = 'set -e; d=$(mktemp -d); tar -xzf - -C "$d"; sh "$d/install.sh"; rm -rf "$d"';
+  const [cmd, args] = kind === 'ssh' ? ['ssh', [target, remoteCmd]] : ['gh', ['codespace', 'ssh', '-c', target, '--', remoteCmd]];
+  if (flags.dryRun) {
+    say(`would run: ${cmd} ${args.map((a) => (/\s/.test(a) ? `'${a}'` : a)).join(' ')}`);
+    say(`kit: ${dir}`);
+    return;
+  }
+  say(`Installing the Dev Deck remote kit on ${target}…`);
+  const r = spawnSync(cmd, args, { input: tar.stdout, stdio: ['pipe', 'inherit', 'inherit'] });
+  if (r.status !== 0) throw new Error(`${cmd} exited with status ${r.status}`);
+  ok(`remote kit installed on ${target}. Reload that VS Code window, then start a Claude session there.`);
+}
+
+function exportKit(target) {
+  const dir = path.resolve(target || path.join(BUILD, 'remote-kit'));
+  buildKit(dir);
+  ok(`remote kit → ${dir}`);
+  say('  For Codespaces: copy that folder into your dotfiles repo as ./duo87 and add this line to the');
+  say('  repo\'s install.sh:   sh "$(dirname "$0")/duo87/install.sh"');
+}
+
+function installBridge() {
+  if (!CODE) return warn('VS Code "code" command not found; skipped the remote bridge extension');
+  const pkg = readJson(path.join(BRIDGE_SRC, 'package.json'));
+  const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'duo87-vsix-'));
+  fs.mkdirSync(path.join(stage, 'extension'));
+  for (const f of ['package.json', 'extension.js']) fs.copyFileSync(path.join(BRIDGE_SRC, f), path.join(stage, 'extension', f));
+  fs.writeFileSync(path.join(stage, '[Content_Types].xml'), '<?xml version="1.0" encoding="utf-8"?>\n'
+    + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    + '<Default Extension=".json" ContentType="application/json"/><Default Extension=".js" ContentType="application/javascript"/>'
+    + '<Default Extension=".vsixmanifest" ContentType="text/xml"/></Types>\n');
+  fs.writeFileSync(path.join(stage, 'extension.vsixmanifest'), `<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Language="en-US" Id="${pkg.name}" Version="${pkg.version}" Publisher="${pkg.publisher}"/>
+    <DisplayName>${pkg.displayName}</DisplayName>
+    <Description xml:space="preserve">${pkg.description}</Description>
+    <Categories>Other</Categories>
+    <Properties>
+      <Property Id="Microsoft.VisualStudio.Code.Engine" Value="${pkg.engines.vscode}"/>
+      <Property Id="Microsoft.VisualStudio.Code.ExtensionKind" Value="ui"/>
+    </Properties>
+  </Metadata>
+  <Installation><InstallationTarget Id="Microsoft.VisualStudio.Code"/></Installation>
+  <Dependencies/>
+  <Assets><Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" Addressable="true"/></Assets>
+</PackageManifest>
+`);
+  const vsix = path.join(BUILD, `${pkg.name}-${pkg.version}.vsix`);
+  fs.mkdirSync(BUILD, { recursive: true });
+  fs.rmSync(vsix, { force: true });
+  const z = sh('zip', ['-r', '-X', '-q', vsix, '[Content_Types].xml', 'extension.vsixmanifest', 'extension'], { cwd: stage });
+  if (z.status !== 0) throw new Error(`could not build ${vsix}: ${z.stderr}`);
+  const r = sh(CODE, ['--install-extension', vsix, '--force']);
+  if (r.status !== 0) throw new Error(`code --install-extension failed: ${(r.stderr || r.stdout).trim()}`);
+  ok(`VS Code bridge extension ${BRIDGE_ID} ${pkg.version} installed (mirrors Claude state from SSH/Codespaces windows)`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Diagnostics
+
+function doctor() {
+  const check = (cond, good, bad) => (cond ? ok(good) : warn(bad));
+  say('DUO87 Dev Deck doctor');
+  check(fs.existsSync(APP), 'Play Deck app installed', `missing ${APP}`);
+  check(appRunning(), 'Play Deck app running', 'Play Deck app is not running');
+  const pluginManifest = path.join(SD_PLUGINS, PLUGIN_ID, 'manifest.json');
+  check(fs.existsSync(pluginManifest), 'Dev Deck plugin installed', 'plugin not installed (run: duo87 install)');
+  check(fs.existsSync(path.join(SD_PLUGINS, PLUGIN_ID, 'node_modules/ws')), 'plugin dependency ws present', 'ws missing in the plugin (run: duo87 install)');
+  let ids = {};
+  try { ids = readJson(IDS_FILE); } catch {}
+  const profileDir = ids.profile && path.join(SD_PROFILES, `${ids.profile}.sdProfile`);
+  check(profileDir && fs.existsSync(profileDir), 'Dev profile installed', 'Dev profile not installed (run: duo87 install)');
+  try {
+    check(ids.profile && fs.readFileSync(SD_CONFIG, 'utf8').includes(`${ids.profile}.sdProfile`), 'Dev profile is the active profile', 'another profile is active (switch in the app, or re-run install)');
+  } catch {}
+  check(fs.existsSync(path.join(DUO, 'bin/duo87-keys')), 'duo87-keys helper built', 'duo87-keys missing (run: duo87 install; it needs xcode-select --install)');
+  try {
+    const hooks = readJson(CLAUDE_SETTINGS).hooks || {};
+    const missing = HOOK_EVENTS.filter((ev) => !(hooks[ev] || []).some((g) => (g.hooks || []).some((h) => h.command === HOOK_CMD)));
+    check(!missing.length, 'Claude Code hook registered for all events', `hook missing for: ${missing.join(', ')} (run: duo87 hooks)`);
+  } catch { warn('could not read ~/.claude/settings.json'); }
+  try {
+    const kb = readJsonc(path.join(VSCODE_USER, 'keybindings.json')) || [];
+    check(kb.some((b) => b.key === 'ctrl+alt+f16' && b.command === 'claude-vscode.focus'), 'VS Code keybindings present', 'VS Code keybindings missing (run: duo87 vscode)');
+  } catch { warn('VS Code keybindings.json missing or unreadable (run: duo87 vscode)'); }
+  try {
+    const tasks = (readJsonc(path.join(VSCODE_USER, 'tasks.json')) || {}).tasks || [];
+    check(tasks.some((t) => t.label === 'DUO87: Smart Commit'), 'VS Code smart-commit tasks present', 'VS Code tasks missing (run: duo87 vscode)');
+  } catch { warn('VS Code tasks.json missing or unreadable (run: duo87 vscode)'); }
+  if (CODE) {
+    const exts = sh(CODE, ['--list-extensions', '--show-versions']).stdout || '';
+    const line = exts.split('\n').find((l) => l.toLowerCase().startsWith(BRIDGE_ID));
+    check(line, `VS Code bridge extension installed (${line || ''}) for SSH/Codespaces windows`, 'VS Code bridge extension missing (run: duo87 bridge)');
+  }
+  const claudeBin = [path.join(HOME, '.local/bin/claude'), '/opt/homebrew/bin/claude'].find((p) => fs.existsSync(p));
+  check(claudeBin, `claude CLI: ${claudeBin}`, 'claude CLI not found (smart-commit falls back to a basic message)');
+  check(sh('/bin/zsh', ['-lc', 'command -v gh']).status === 0, 'gh CLI available (PR keys)', 'gh CLI not found (Create/View PR keys need it)');
+  try {
+    const lines = fs.readFileSync(PLUGIN_LOG, 'utf8').trim().split('\n').reverse();
+    const conn = lines.find((l) => l.includes(' connected '));
+    const ax = lines.find((l) => l.includes('accessibility check:'));
+    if (conn) ok(`plugin last connected ${conn.slice(0, 19).replace('T', ' ')} UTC`);
+    if (ax) check(!/not granted/.test(ax), 'Accessibility granted to DUO87_Play_Deck', 'Accessibility NOT granted to DUO87_Play_Deck (System Settings > Privacy & Security > Accessibility)');
+  } catch { warn('no plugin log yet (~/.duo87/logs/plugin.log)'); }
+}
+
+function status() {
+  const dir = path.join(DUO, 'state/claude');
+  let files = [];
+  try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')); } catch {}
+  say(`Claude sessions: ${files.length}`);
+  for (const f of files) {
+    try {
+      const s = readJson(path.join(dir, f));
+      const age = Math.round((Date.now() - s.ts) / 1000);
+      say(`  ${s.state.padEnd(10)} ${String(s.project || '').padEnd(24)} ${age}s ago  ${s.ask || [s.tool, s.detail].filter(Boolean).join(' · ') || ''}`);
+      if (s.prompt) say(`             last prompt: ${s.prompt.slice(0, 90)}`);
+    } catch {}
+  }
+  try {
+    const c = readJson(path.join(DUO, 'state/commit.json'));
+    say(`Last smart commit: ${c.status} ${c.hash || ''} ${c.subject || c.error || ''} (${c.project}, ${Math.round((Date.now() - c.ts) / 60000)}m ago)`);
+  } catch { say('Last smart commit: none'); }
+}
+
+const cmd = process.argv[2] || 'help';
+const rest = process.argv.slice(3);
+const flags = { force: rest.includes('--force'), dryRun: rest.includes('--dry-run') };
+const target = rest.find((a) => !a.startsWith('--'));
+try {
+  switch (cmd) {
+    case 'remote': remoteInstall('ssh', target, flags); break;
+    case 'codespace': remoteInstall('codespace', target, flags); break;
+    case 'kit': exportKit(target); break;
+    case 'bridge': installBridge(); break;
+    case 'install': install(); break;
+    case 'build': setup(); buildPluginImages(); buildProfile(); break;
+    case 'doctor': doctor(); break;
+    case 'status': status(); break;
+    case 'guide': {
+      const r = sh(process.execPath, [path.join(DUO, 'src/build-guide.js')], { stdio: 'inherit' });
+      if (r.status !== 0) process.exit(r.status || 1);
+      break;
+    }
+    case 'hooks': mergeHooks(); break;
+    case 'vscode': mergeVscode(); break;
+    default:
+      {
+        const lines = fs.readFileSync(__filename, 'utf8').split('\n').slice(1);
+        const end = lines.findIndex((l) => !l.startsWith('//'));
+        say(lines.slice(0, end).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+      }
+  }
+} catch (e) {
+  console.error(`✗ ${e.message}`);
+  process.exit(1);
+}

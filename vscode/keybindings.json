@@ -1,0 +1,19 @@
+[
+  // DUO87 Dev Deck: Play Deck touch keys send these F16-F19 combos (unused by real keys).
+  { "key": "ctrl+alt+f16", "command": "claude-vscode.focus" },
+  { "key": "ctrl+alt+f17", "command": "runCommands", "args": { "commands": ["claude-vscode.focus", "claude-vscode.newConversation"] } },
+  { "key": "ctrl+alt+f18", "command": "workbench.action.tasks.runTask", "args": "DUO87: Smart Commit" },
+  { "key": "ctrl+alt+f19", "command": "workbench.action.tasks.runTask", "args": "DUO87: Smart Commit + Push" },
+  { "key": "ctrl+shift+f16", "command": "workbench.action.terminal.focus" },
+  { "key": "ctrl+shift+f17", "command": "git.pull" },
+  { "key": "ctrl+shift+f18", "command": "git.push" },
+  { "key": "ctrl+shift+f19", "command": "git.sync" },
+  { "key": "alt+shift+f16", "command": "workbench.action.tasks.runTask", "args": "DUO87: Create PR" },
+  { "key": "alt+shift+f17", "command": "workbench.action.tasks.runTask", "args": "DUO87: View PR" },
+  { "key": "alt+shift+f18", "command": "workbench.action.tasks.runTask", "args": "DUO87: Open on GitHub" },
+  { "key": "alt+shift+f19", "command": "git.stash" },
+  { "key": "cmd+alt+f16", "command": "git.undoCommit" },
+  { "key": "cmd+alt+f17", "command": "git.checkout" },
+  { "key": "cmd+alt+f18", "command": "claude-vscode.acceptProposedDiff" },
+  { "key": "cmd+alt+f19", "command": "claude-vscode.rejectProposedDiff" }
+]

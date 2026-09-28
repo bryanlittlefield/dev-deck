@@ -1,0 +1,25 @@
+# Dev Deck lives in ~/.duo87, next to the files it writes while running (state/, logs/,
+# backups/, build/, your config.json). Only the sources listed here are tracked.
+/*
+!/.gitignore
+!/README.md
+!/config.example.json
+!/bin/
+!/docs/
+!/plugin/
+!/profile/
+!/remote-kit/
+!/src/
+!/vscode/
+!/vscode-bridge/
+
+# Built by `duo87 install` / `duo87 build`
+/bin/duo87-keys
+/plugin/*/node_modules/
+/plugin/*/images/
+/plugin/*/plugin/git-info.js
+/profile/ids.json
+/profile/*.streamDockProfile
+/profile/*-backup
+
+.DS_Store

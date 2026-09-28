@@ -1,0 +1,22 @@
+#!/bin/sh
+# duo87-node — run a script with whatever Node.js this machine has: system node, nvm, Homebrew,
+# or the Node that VS Code's remote server ships with. That last one means SSH hosts and
+# Codespaces without Node still run the Dev Deck hook and smart-commit.
+#
+#   duo87-node <script.js> [args...]
+
+for n in "$(command -v node 2>/dev/null)" \
+  /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node \
+  "$HOME"/.nvm/versions/node/*/bin/node \
+  "$HOME"/.vscode-server/cli/servers/*/server/node \
+  "$HOME"/.vscode-server/bin/*/node \
+  "$HOME"/.vscode-remote/bin/*/node \
+  /vscode/cli/servers/*/server/node \
+  /vscode/bin/*/*/node; do
+  if [ -n "$n" ] && [ -x "$n" ]; then
+    exec "$n" "$@"
+  fi
+done
+
+echo "duo87: no Node.js found. Install node, or connect once with VS Code so its server is present." >&2
+exit 127

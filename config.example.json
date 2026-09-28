@@ -1,0 +1,16 @@
+{
+  "commit": {
+    "model": "haiku",
+    "confirm": true,
+    "signoff": true,
+    "stageAll": true,
+    "maxDiffKB": 60,
+    "timeoutSec": 90,
+    "trailer": "",
+    "notify": true
+  },
+  "deck": {
+    "imageFormat": "svg",
+    "screenColumns": 3
+  }
+}

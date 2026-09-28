@@ -1,0 +1,84 @@
+{
+  "name": "Dev Deck",
+  "comment": "Each page lists the screen's rows top to bottom, 3 keys per row, 4 rows (the DUO87 screen is portrait). null leaves a key empty. Plugin actions: status, view, answer, focus, prompt, commit, repo, banner, keys, shell. Two or three banner keys side by side in a row join into one wide git display. Native: page.next (on the last page it wraps to page 1), page.previous, page.goto (\"page\": a page id), scene. Page order and pages you add in the app are kept. Edit, then run: ~/.duo87/bin/duo87 install",
+  "pages": [
+    {
+      "id": "claude",
+      "name": "Claude",
+      "rows": [
+        [
+          { "action": "status" },
+          { "action": "answer", "settings": { "answer": "allow" } },
+          { "action": "answer", "settings": { "answer": "deny" } }
+        ],
+        [
+          { "action": "view", "settings": { "show": "prompt" } },
+          { "action": "focus", "settings": { "label": "Claude", "sub": "Focus" } },
+          { "action": "focus", "settings": { "label": "New Chat", "newChat": true } }
+        ],
+        [
+          { "action": "prompt", "settings": { "label": "Review", "icon": "eye", "prompt": "Review my uncommitted changes (git diff HEAD) like a senior engineer: bugs, edge cases, security issues, and anything I forgot. Be concise and concrete, and don't change anything yet." } },
+          { "action": "prompt", "settings": { "label": "Explain", "icon": "book", "prompt": "Explain the selected code (or the file I have open): what it does, how it fits into the project, and any gotchas. Keep it short." } },
+          { "action": "prompt", "settings": { "label": "Write\nTests", "icon": "flask", "prompt": "Write or update tests for the code I'm working on, run them, and fix any failures. Follow the project's existing test conventions." } }
+        ],
+        [
+          { "action": "prompt", "settings": { "label": "Fix\nBuild", "icon": "wrench", "prompt": "Run this project's build, linter and tests. Fix whatever fails, then summarize what you changed." } },
+          { "action": "commit" },
+          { "native": "page.next" }
+        ]
+      ]
+    },
+    {
+      "id": "git",
+      "name": "Git",
+      "rows": [
+        [
+          { "action": "banner" },
+          { "action": "banner" },
+          { "action": "banner" }
+        ],
+        [
+          { "action": "commit", "settings": { "push": true } },
+          { "action": "keys", "settings": { "label": "Pull", "icon": "pull", "color": "teal", "keys": "ctrl+shift+f17" } },
+          { "action": "keys", "settings": { "label": "Push", "icon": "push", "color": "teal", "keys": "ctrl+shift+f18" } }
+        ],
+        [
+          { "action": "keys", "settings": { "label": "Stash", "icon": "stash", "color": "teal", "keys": "alt+shift+f19" } },
+          { "action": "keys", "settings": { "label": "Undo\nCommit", "icon": "undo", "color": "amber", "keys": "cmd+alt+f16" } },
+          { "action": "keys", "settings": { "label": "GitHub", "icon": "globe", "color": "gray", "keys": "alt+shift+f18" } }
+        ],
+        [
+          { "action": "keys", "settings": { "label": "Create PR", "icon": "pr", "color": "purple", "keys": "alt+shift+f16" } },
+          { "action": "keys", "settings": { "label": "View PR", "icon": "pr", "color": "purple", "keys": "alt+shift+f17" } },
+          { "native": "page.next" }
+        ]
+      ]
+    },
+    {
+      "id": "vscode",
+      "name": "VS Code",
+      "rows": [
+        [
+          { "action": "keys", "settings": { "label": "Commands", "icon": "command", "keys": "cmd+shift+p" } },
+          { "action": "keys", "settings": { "label": "Go to File", "icon": "file", "keys": "cmd+p" } },
+          { "action": "keys", "settings": { "label": "Search", "icon": "search", "keys": "cmd+shift+f" } }
+        ],
+        [
+          { "action": "keys", "settings": { "label": "Terminal", "icon": "terminal", "keys": "ctrl+`" } },
+          { "action": "keys", "settings": { "label": "Go to\nDefinition", "icon": "definition", "keys": "f12" } },
+          { "action": "keys", "settings": { "label": "Rename", "icon": "rename", "keys": "f2" } }
+        ],
+        [
+          { "action": "keys", "settings": { "label": "Format", "icon": "format", "keys": "shift+alt+f" } },
+          { "action": "keys", "settings": { "label": "Comment", "icon": "comment", "keys": "cmd+/" } },
+          { "action": "keys", "settings": { "label": "Sidebar", "icon": "sidebar", "keys": "cmd+b" } }
+        ],
+        [
+          { "action": "keys", "settings": { "label": "Split", "icon": "split", "keys": "cmd+\\" } },
+          { "action": "keys", "settings": { "label": "Source\nControl", "icon": "scm", "keys": "ctrl+shift+g" } },
+          { "native": "page.next" }
+        ]
+      ]
+    }
+  ]
+}

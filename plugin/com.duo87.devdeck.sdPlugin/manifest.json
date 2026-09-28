@@ -1,0 +1,209 @@
+{
+  "Name": "Dev Deck",
+  "Version": "1.0.0",
+  "Author": "Bryan Littlefield",
+  "Description": "Claude Code status, prompts and approvals, AI smart commits, repo status and a wide git display, VS Code shortcuts and shell commands.",
+  "URL": "https://bryanlittlefield.github.io/dev-deck/",
+  "Icon": "images/plugin.png",
+  "Category": "Dev Deck",
+  "CategoryIcon": "images/category.png",
+  "CodePath": "plugin/index.js",
+  "CodePathMac": "plugin/index.js",
+  "CodePathWin": "plugin/index.js",
+  "PropertyInspectorPath": "pi/index.html",
+  "SDKVersion": 1,
+  "Nodejs": {
+    "Version": "20"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    }
+  ],
+  "Actions": [
+    {
+      "UUID": "com.duo87.devdeck.status",
+      "Name": "Claude Status",
+      "Icon": "images/actions/status.png",
+      "Tooltip": "Live Claude Code status. Tap to jump to the session.",
+      "States": [
+        {
+          "Image": "images/keys/status.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.duo87.devdeck.view",
+      "Name": "Claude Prompt / Reply",
+      "Icon": "images/actions/view.png",
+      "Tooltip": "Shows your last Claude prompt (or Claude's last reply). Tap to copy it.",
+      "States": [
+        {
+          "Image": "images/keys/view.png"
+        }
+      ],
+      "Settings": {
+        "show": "prompt"
+      },
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.duo87.devdeck.answer",
+      "Name": "Answer Claude",
+      "Icon": "images/actions/answer.png",
+      "Tooltip": "Allow / Always / Deny a pending Claude Code permission prompt.",
+      "States": [
+        {
+          "Image": "images/keys/answer.png"
+        }
+      ],
+      "Settings": {
+        "answer": "allow"
+      },
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true
+    },
+    {
+      "UUID": "com.duo87.devdeck.focus",
+      "Name": "Focus Claude",
+      "Icon": "images/actions/focus.png",
+      "Tooltip": "Focus the Claude Code input in VS Code (or start a new chat).",
+      "States": [
+        {
+          "Image": "images/keys/focus.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true
+    },
+    {
+      "UUID": "com.duo87.devdeck.prompt",
+      "Name": "Claude Prompt",
+      "Icon": "images/actions/prompt.png",
+      "Tooltip": "Send a saved prompt or slash command to Claude Code.",
+      "States": [
+        {
+          "Image": "images/keys/prompt.png"
+        }
+      ],
+      "Settings": {
+        "label": "Prompt",
+        "prompt": "",
+        "submit": true,
+        "target": "vscode"
+      },
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true
+    },
+    {
+      "UUID": "com.duo87.devdeck.commit",
+      "Name": "Smart Commit",
+      "Icon": "images/actions/commit.png",
+      "Tooltip": "Stage, let Claude write the message, confirm, commit (optionally push).",
+      "States": [
+        {
+          "Image": "images/keys/commit.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true
+    },
+    {
+      "UUID": "com.duo87.devdeck.repo",
+      "Name": "Repo Status",
+      "Icon": "images/actions/repo.png",
+      "Tooltip": "Branch, changes and ahead/behind for your current repo.",
+      "States": [
+        {
+          "Image": "images/keys/repo.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.duo87.devdeck.banner",
+      "Name": "Wide Display",
+      "Icon": "images/actions/banner.png",
+      "Tooltip": "Put 2-3 side by side in one screen row: they join into one wide git display. Tap the left key to switch branch, the others for Source Control.",
+      "States": [
+        {
+          "Image": "images/keys/banner.png"
+        }
+      ],
+      "Settings": {
+        "show": "git"
+      },
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.duo87.devdeck.keys",
+      "Name": "Shortcut",
+      "Icon": "images/actions/keys.png",
+      "Tooltip": "Send a keyboard shortcut to VS Code (or any app).",
+      "States": [
+        {
+          "Image": "images/keys/keys.png"
+        }
+      ],
+      "Settings": {
+        "label": "Shortcut",
+        "keys": ""
+      },
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true
+    },
+    {
+      "UUID": "com.duo87.devdeck.shell",
+      "Name": "Run Command",
+      "Icon": "images/actions/shell.png",
+      "Tooltip": "Run a shell command in your current repo.",
+      "States": [
+        {
+          "Image": "images/keys/shell.png"
+        }
+      ],
+      "Settings": {
+        "label": "Run",
+        "command": ""
+      },
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true
+    }
+  ]
+}

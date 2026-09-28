@@ -1,0 +1,409 @@
+#!/usr/bin/env node
+// smart-commit — AI-written commit messages for the DUO87 Dev Deck (works in any terminal too).
+//
+//   smart-commit [repo-path] [--push] [--yes] [--dry-run] [--all]
+//
+//   --push     push after committing (sets upstream on first push)
+//   --yes      skip the confirmation dialog
+//   --dry-run  print the generated message, change nothing
+//   --all      stage everything even if some files are already staged
+//
+// If nothing is staged, everything is staged (git add -A). Claude (headless, fast model, no tools,
+// no hooks) writes the message in the style of your recent commits. You can edit it in a dialog
+// before it is committed. Settings live in ~/.duo87/config.json under "commit".
+'use strict';
+
+const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const HOME = os.homedir();
+const DUO = path.join(HOME, '.duo87');
+const STATE_FILE = path.join(DUO, 'state', 'commit.json');
+process.env.PATH = ['/opt/homebrew/bin', '/usr/local/bin', path.join(HOME, '.local/bin'), process.env.PATH || '']
+  .join(':');
+
+// On your Mac we use native dialogs/notifications. Over Remote-SSH, in Codespaces or containers
+// there is no screen to show them on, so everything happens in the task's terminal instead.
+const LOCAL_MAC = process.platform === 'darwin' && !process.env.SSH_CONNECTION && !process.env.SSH_CLIENT
+  && !process.env.CODESPACES && !process.env.REMOTE_CONTAINERS;
+
+// Claude CLI: a normal install, else the one bundled with the Claude Code VS Code extension
+// (on a remote that is ~/.vscode-server/extensions/..., in Codespaces ~/.vscode-remote/extensions/...).
+function findClaude() {
+  const direct = [path.join(HOME, '.local/bin/claude'), path.join(HOME, '.claude/local/claude'),
+    '/opt/homebrew/bin/claude', '/usr/local/bin/claude', '/usr/bin/claude'];
+  for (const p of direct) if (fs.existsSync(p)) return p;
+  const onPath = spawnSync('/bin/sh', ['-c', 'command -v claude'], { encoding: 'utf8' }).stdout.trim();
+  if (onPath) return onPath;
+  const bundled = [];
+  for (const root of ['.vscode-server/extensions', '.vscode-remote/extensions', '.vscode/extensions']) {
+    const dir = path.join(HOME, root);
+    let names = [];
+    try { names = fs.readdirSync(dir).filter((n) => n.startsWith('anthropic.claude-code-')); } catch {}
+    for (const n of names) {
+      const bin = path.join(dir, n, 'resources/native-binary/claude');
+      if (fs.existsSync(bin)) bundled.push({ bin, mtime: fs.statSync(bin).mtimeMs });
+    }
+  }
+  bundled.sort((a, b) => b.mtime - a.mtime);
+  return bundled.length ? bundled[0].bin : 'claude';
+}
+const CLAUDE = findClaude();
+
+const DEFAULTS = {
+  model: 'haiku',          // any `claude --model` value
+  confirm: true,           // show the edit/confirm dialog
+  signoff: true,           // add Signed-off-by (matches git.alwaysSignOff in VS Code)
+  stageAll: true,          // stage everything when nothing is staged
+  maxDiffKB: 60,           // diff size sent to Claude
+  timeoutSec: 90,
+  trailer: '',             // e.g. "Co-Authored-By: Claude <noreply@anthropic.com>"
+  notify: true,            // macOS notification when done
+};
+
+const PATCH_EXCLUDES = [
+  '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/composer.lock', '**/Gemfile.lock',
+  '**/Cargo.lock', '**/poetry.lock', '**/*.min.js', '**/*.min.css', '**/*.map',
+].map((glob) => `:(glob,exclude)${glob}`);
+
+function loadConfig() {
+  try {
+    const file = JSON.parse(fs.readFileSync(path.join(DUO, 'config.json'), 'utf8'));
+    return { ...DEFAULTS, ...(file.commit || {}) };
+  } catch {
+    return { ...DEFAULTS };
+  }
+}
+
+function parseArgs(argv) {
+  const opts = { push: false, yes: false, dryRun: false, all: false, dir: null };
+  for (const a of argv) {
+    if (a === '--push') opts.push = true;
+    else if (a === '--yes' || a === '-y') opts.yes = true;
+    else if (a === '--dry-run' || a === '-n') opts.dryRun = true;
+    else if (a === '--all' || a === '-a') opts.all = true;
+    else if (a === '--help' || a === '-h') {
+      console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(1, 16).map((l) => l.replace(/^\/\/ ?/, '')).join('\n'));
+      process.exit(0);
+    } else if (!a.startsWith('-') && !opts.dir) opts.dir = a;
+    else fail(`unknown option ${a}`);
+  }
+  return opts;
+}
+
+let repo = null;
+
+function writeState(fields) {
+  try {
+    fs.mkdirSync(path.dirname(STATE_FILE), { recursive: true });
+    const state = { repo, project: repo ? path.basename(repo) : '', ts: Date.now(), ...fields };
+    fs.writeFileSync(STATE_FILE + '.tmp', JSON.stringify(state));
+    fs.renameSync(STATE_FILE + '.tmp', STATE_FILE);
+  } catch {}
+  if (['success', 'error', 'canceled', 'nothing'].includes(fields.status)) refreshSessionGit();
+}
+
+// The deck's git display shows the snapshot the Claude hook last took for each session (on SSH
+// hosts and codespaces the Mac can't run git itself). Refresh it for sessions in this repo, so a
+// commit shows up right away instead of at Claude's next step.
+function refreshSessionGit() {
+  if (!repo) return;
+  let gitInfo;
+  try { gitInfo = require('./git-info.js'); } catch { return; }
+  const dir = path.join(DUO, 'state', 'claude');
+  let files = [];
+  try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('r-')); } catch { return; }
+  const top = (() => { try { return fs.realpathSync(repo); } catch { return repo; } })();
+  for (const f of files) {
+    const file = path.join(dir, f);
+    try {
+      const session = JSON.parse(fs.readFileSync(file, 'utf8'));
+      const where = fs.realpathSync(session.root || session.cwd || '/nonexistent');
+      if (where !== top && !where.startsWith(top + path.sep)) continue;
+      const git = gitInfo.snapshotSync(where);
+      if (!git) continue;
+      const tmp = `${file}.${process.pid}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify({ ...session, git }), { mode: 0o600 });
+      fs.renameSync(tmp, file);
+    } catch {}
+  }
+}
+
+let notificationsOn = true;
+function notify(title, message) {
+  if (!notificationsOn || !LOCAL_MAC || process.env.DUO87_NO_NOTIFY) return;
+  spawnSync('osascript',['-e', 'on run argv\ndisplay notification (item 2 of argv) with title (item 1 of argv)\nend run',
+    title, message.slice(0, 200)]);
+}
+
+function fail(message, { unstage = false } = {}) {
+  if (unstage) restoreIndex();
+  console.error(`✗ ${message}`);
+  writeState({ status: 'error', error: message.split('\n')[0].slice(0, 160) });
+  notify('Smart Commit failed', message);
+  process.exit(1);
+}
+
+function git(args, options = {}) {
+  return spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...options });
+}
+
+function gitOut(args) {
+  const r = git(args);
+  if (r.status !== 0) throw new Error((r.stderr || r.stdout || '').trim() || `git ${args.join(' ')} failed`);
+  return r.stdout;
+}
+
+let autoStaged = false;
+function restoreIndex() {
+  if (!autoStaged) return;
+  const hasHead = git(['rev-parse', '--verify', '-q', 'HEAD']).status === 0;
+  if (hasHead) git(['reset', '-q']);
+  else git(['rm', '-r', '-q', '--cached', '.']);
+  autoStaged = false;
+}
+
+function cleanMessage(text) {
+  let msg = String(text || '').replace(/\r/g, '').trim();
+  msg = msg.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/, '').trim();
+  msg = msg.replace(/^(here('| i)s|commit message)[^\n]*:\s*\n+/i, '').trim();
+  if (/^["'].*["']$/s.test(msg)) msg = msg.slice(1, -1).trim();
+  return msg;
+}
+
+function generateMessage(cfg, context) {
+  const system = [
+    'You write git commit messages. Output ONLY the commit message: no preamble, quotes, code fences or commentary.',
+    'Rules:',
+    '- Subject: imperative mood, at most 72 characters, no trailing period.',
+    '- Match the style of the recent commits shown (Conventional Commits "type(scope): subject", ticket prefixes,',
+    '  capitalization). If there are no recent commits, use Conventional Commits.',
+    '- If the branch name contains a ticket ID (like ABC-123) and the repo style uses ticket IDs, include it.',
+    '- Add a body (blank line after the subject, wrapped at 72 characters) only when the change needs it:',
+    '  1-4 short "- " bullets on what changed and why. Skip the body for small, obvious changes.',
+    '- Never add Signed-off-by or Co-Authored-By trailers and never mention that the message was generated.',
+  ].join('\n');
+
+  // No thinking: a commit message doesn't need it, and it cuts the call from ~8s to ~2s.
+  const env = { ...process.env, MAX_THINKING_TOKENS: '0' };
+  delete env.CLAUDECODE;               // allow running from inside a Claude Code session
+  delete env.CLAUDE_CODE_ENTRYPOINT;
+  const settings = { disableAllHooks: true, alwaysThinkingEnabled: false };
+
+  const r = spawnSync(CLAUDE, [
+    '-p', '--model', cfg.model, '--tools', '', '--no-session-persistence', '--strict-mcp-config',
+    '--settings', JSON.stringify(settings), '--system-prompt', system, '--output-format', 'text',
+  ],{ input: context, cwd: repo, env, encoding: 'utf8', timeout: cfg.timeoutSec * 1000, maxBuffer: 8 * 1024 * 1024 });
+
+  if (r.error || r.status !== 0) {
+    const why = r.error ? r.error.message : (r.stderr || r.stdout || '').trim().split('\n').pop();
+    console.error(`  ! Claude could not write the message (${why || 'unknown error'}); using a basic one.`);
+    if (/login|log in|auth|api key|credential|ENOENT/i.test(why || '')) {
+      console.error(`    Claude CLI used: ${CLAUDE}. On a remote, sign in once by running it in a terminal there.`);
+    }
+    return null;
+  }
+  const msg = cleanMessage(r.stdout);
+  return msg.length > 3 ? msg : null;
+}
+
+function fallbackMessage(nameStatus) {
+  const files = nameStatus.split('\n').filter(Boolean).map((l) => l.split('\t').pop());
+  const shown = files.slice(0, 3).map((f) => path.basename(f)).join(', ');
+  return `chore: update ${files.length === 1 ? shown : `${files.length} files (${shown}${files.length > 3 ? ', …' : ''})`}`;
+}
+
+function readLineSync() {
+  const buf = Buffer.alloc(1024);
+  let line = '';
+  for (;;) {
+    let n;
+    try {
+      n = fs.readSync(0, buf, 0, buf.length, null);
+    } catch (e) {
+      if (e.code === 'EAGAIN') { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50); continue; }
+      if (e.code === 'EOF') return null;
+      throw e;
+    }
+    if (n === 0) return line || null;
+    line += buf.toString('utf8', 0, n);
+    if (line.includes('\n')) return line.split('\n')[0].replace(/\r$/, '');
+  }
+}
+
+function editInEditor(message) {
+  const file = path.join(os.tmpdir(), `duo87-commit-edit-${process.pid}.txt`);
+  fs.writeFileSync(file, `${message}\n\n# Edit the commit message. Lines starting with # are ignored.\n`);
+  const codeCli = spawnSync('/bin/sh', ['-c', 'command -v code'], { encoding: 'utf8' }).stdout.trim();
+  const editor = (process.env.TERM_PROGRAM === 'vscode' && codeCli) ? `"${codeCli}" --wait`
+    : (process.env.VISUAL || process.env.EDITOR || (codeCli ? `"${codeCli}" --wait` : 'vi'));
+  spawnSync('/bin/sh', ['-c', `${editor} "$1"`, 'sh', file], { stdio: 'inherit' });
+  let edited = '';
+  try { edited = fs.readFileSync(file, 'utf8'); fs.unlinkSync(file); } catch {}
+  return cleanMessage(edited.split('\n').filter((l) => !l.startsWith('#')).join('\n'));
+}
+
+// Remote / terminal confirmation (the VS Code task terminal takes the keystrokes).
+function confirmTerminal(message, header, pushDefault) {
+  let msg = message;
+  for (;;) {
+    process.stdout.write(`\n${header}\n\n${msg.split('\n').map((l) => `    ${l}`).join('\n')}\n\n`);
+    process.stdout.write(pushDefault
+      ? '[Enter] commit & push   [c] commit only   [e] edit   [n] cancel: '
+      : '[Enter] commit   [p] commit & push   [e] edit   [n] cancel: ');
+    const answer = String(readLineSync() ?? 'n').trim().toLowerCase();
+    if (answer === '') return { action: pushDefault ? 'push' : 'commit', message: msg };
+    if (answer === 'p' || answer === 'push') return { action: 'push', message: msg };
+    if (answer === 'c' || answer === 'commit') return { action: 'commit', message: msg };
+    if (answer === 'e' || answer === 'edit') { msg = editInEditor(msg) || msg; continue; }
+    if (answer === 'n' || answer === 'q' || answer === 'cancel') return { action: 'cancel' };
+  }
+}
+
+// Local macOS dialog with the message pre-filled and editable.
+function confirmDialog(message, info, pushDefault) {
+  const buttons = pushDefault ? ['Cancel', 'Commit only', 'Commit & Push'] : ['Cancel', 'Commit & Push', 'Commit'];
+  const script = `on run argv
+  activate
+  set r to display dialog (item 2 of argv) default answer (item 1 of argv) with title "Smart Commit" ¬
+    buttons {"${buttons[0]}", "${buttons[1]}", "${buttons[2]}"} default button "${buttons[2]}" ¬
+    cancel button "Cancel" with icon note
+  return (button returned of r) & linefeed & (text returned of r)
+end run`;
+  const r = spawnSync('osascript', ['-e', script, message, info], { encoding: 'utf8' });
+  if (r.status !== 0) return { action: 'cancel' };
+  const [button, ...rest] = r.stdout.replace(/\n$/, '').split('\n');
+  const edited = cleanMessage(rest.join('\n'));
+  const push = button === 'Commit & Push';
+  return { action: push ? 'push' : 'commit', message: edited || message };
+}
+
+function main() {
+  const opts = parseArgs(process.argv.slice(2));
+  const cfg = loadConfig();
+  notificationsOn = cfg.notify !== false;
+  const start = path.resolve(opts.dir || process.cwd());
+
+  const top = spawnSync('git', ['-C', start, 'rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  if (top.status !== 0) {
+    repo = null;
+    fail(`${start} is not inside a git repository`);
+  }
+  repo = top.stdout.trim();
+  const name = path.basename(repo);
+  writeState({ status: 'running', step: 'staging' });
+
+  let staged = gitOut(['diff', '--cached', '--name-only']).trim();
+  if (!staged || opts.all) {
+    const pending = gitOut(['status', '--porcelain']).trim();
+    if (!pending && !staged) {
+      console.log(`Nothing to commit in ${name}.`);
+      writeState({ status: 'nothing' });
+      notify('Smart Commit', `Nothing to commit in ${name}`);
+      return;
+    }
+    if (!staged && !cfg.stageAll) fail('Nothing is staged (stageAll is off in ~/.duo87/config.json)');
+    if (pending) {
+      autoStaged = !staged;
+      gitOut(['add', '-A']);
+      staged = gitOut(['diff', '--cached', '--name-only']).trim();
+      console.log(`▸ Staged all changes (${staged.split('\n').length} files)`);
+    }
+  }
+
+  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']).stdout.trim() || '(no branch)';
+  const recent = git(['log', '-n', '12', '--pretty=format:%s']).stdout.trim();
+  const nameStatus = gitOut(['diff', '--cached', '--name-status']).trim();
+  const stat = gitOut(['diff', '--cached', '--stat=100']).trim();
+  let patch = gitOut(['diff', '--cached', '--no-color', '--no-ext-diff', '-U3', '--', '.', ...PATCH_EXCLUDES]);
+  const limit = cfg.maxDiffKB * 1024;
+  const truncated = patch.length > limit;
+  if (truncated) patch = patch.slice(0, limit) + '\n… (diff truncated)';
+
+  const fileCount = nameStatus.split('\n').filter(Boolean).length;
+  console.log(`▸ ${name} @ ${branch}: ${fileCount} file${fileCount === 1 ? '' : 's'} staged`);
+  console.log(`▸ Claude (${cfg.model}) is writing the commit message…`);
+  writeState({ status: 'running', step: 'writing' });
+
+  const context = [
+    `Repository: ${name}`, `Branch: ${branch}`, '',
+    'Recent commit subjects (newest first):', recent || '(none — first commit)', '',
+    'Files changed:', nameStatus, '', 'Diffstat:', stat, '',
+    `Diff${truncated ? ' (truncated)' : ''}:`, patch,
+  ].join('\n');
+
+  let message = generateMessage(cfg, context) || fallbackMessage(nameStatus);
+  if (cfg.trailer && !message.includes(cfg.trailer)) message += `\n\n${cfg.trailer}`;
+
+  console.log('\n' + message.split('\n').map((l) => `    ${l}`).join('\n') + '\n');
+
+  if (opts.dryRun) {
+    restoreIndex();
+    writeState({ status: 'nothing', step: 'dry-run' });
+    return;
+  }
+
+  let push = opts.push;
+  if (cfg.confirm && !opts.yes) {
+    const header = `${name} · ${branch} · ${fileCount} file${fileCount === 1 ? '' : 's'}`;
+    writeState({ status: 'running', step: 'confirm' });
+    let answer;
+    if (LOCAL_MAC) answer = confirmDialog(message, `${header}\n\nEdit the message if you like:`, opts.push);
+    else if (require('tty').isatty(0)) answer = confirmTerminal(message, header, opts.push);
+    else fail('No terminal to confirm in. Re-run with --yes, or set "confirm": false in ~/.duo87/config.json.', { unstage: true });
+    if (answer.action === 'cancel') {
+      restoreIndex();
+      console.log('Canceled — nothing committed.');
+      writeState({ status: 'canceled' });
+      return;
+    }
+    message = answer.message;
+    push = answer.action === 'push';
+  }
+
+  const msgFile = path.join(os.tmpdir(), `duo87-commit-${process.pid}.txt`);
+  fs.writeFileSync(msgFile, message + '\n');
+  const commitArgs = ['commit', '-F', msgFile, ...(cfg.signoff ? ['--signoff'] : [])];
+  const committed = git(commitArgs, { stdio: ['inherit', 'pipe', 'pipe'] });
+  try { fs.unlinkSync(msgFile); } catch {}
+  if (committed.status !== 0) {
+    fail(`git commit failed:\n${(committed.stderr || committed.stdout || '').trim()}`, { unstage: true });
+  }
+
+  const hash = git(['rev-parse', '--short', 'HEAD']).stdout.trim();
+  const subject = message.split('\n')[0];
+  console.log(`✓ Committed ${hash} — ${subject}`);
+
+  let pushed = false;
+  if (push) {
+    writeState({ status: 'running', step: 'pushing', hash, subject });
+    const upstream = git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+    const remote = git(['remote']).stdout.split('\n').filter(Boolean);
+    const pushArgs = upstream.status === 0 ? ['push'] : ['push', '-u', remote.includes('origin') ? 'origin' : remote[0], 'HEAD'];
+    if (upstream.status !== 0 && remote.length === 0) {
+      console.error('  ! No git remote configured — skipped push.');
+    } else {
+      console.log(`▸ git ${pushArgs.join(' ')}`);
+      const r = git(pushArgs, { stdio: ['inherit', 'inherit', 'pipe'] });
+      if (r.status !== 0) {
+        writeState({ status: 'error', hash, subject, error: 'Committed, but push failed' });
+        notify('Smart Commit', `Committed ${hash}, but push failed`);
+        console.error((r.stderr || '').trim());
+        process.exit(1);
+      }
+      pushed = true;
+      console.log('✓ Pushed');
+    }
+  }
+
+  writeState({ status: 'success', hash, subject, pushed, branch });
+  notify(pushed ? 'Committed & pushed' : 'Committed', `${hash} · ${subject}`);
+}
+
+try {
+  main();
+} catch (error) {
+  fail(error.message || String(error), { unstage: true });
+}

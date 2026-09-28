@@ -1,0 +1,723 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DUO87 Dev Deck</title>
+<meta name="description" content="A developer profile for the Womier DUO87 Play Deck touch screen: live Claude Code status and approvals, AI-written git commits, a wide git display, and VS Code keys.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230d1117'/%3E%3Cpath d='M12 4.5v4M12 15.5v4M4.5 12h4M15.5 12h4M6.7 6.7l2.8 2.8M14.5 14.5l2.8 2.8M6.7 17.3l2.8-2.8M14.5 9.5l2.8-2.8' stroke='%23d97757' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  :root {
+    --ground: #eceff2;
+    --surface: #ffffff;
+    --surface-2: #f5f7f9;
+    --ink: #15191e;
+    --muted: #56606b;
+    --line: #d4dae0;
+    --accent: #1f63d6;
+    --accent-ink: #ffffff;
+    --claude: #b3532f;
+    --vs: #1f63d6;
+    --git: #0b7a83;
+    --good: #1a7f37;
+    --warn: #8a5a00;
+    --note-bg: #e2e9f4;
+    --kbd-bg: #ffffff;
+    --shadow: rgba(20, 28, 40, 0.14);
+    --bezel: #06080a;
+    --bezel-edge: #1c2127;
+    --display: "Chakra Petch", "Avenir Next Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: "IBM Plex Sans", -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0d1117; --surface: #161b22; --surface-2: #11161d; --ink: #e6edf3; --muted: #8d96a0;
+      --line: #2b323b; --accent: #58a6ff; --accent-ink: #0d1117; --claude: #e08a6b; --vs: #58a6ff;
+      --git: #39c5cf; --good: #3fb950; --warn: #d29922; --note-bg: #15233a; --kbd-bg: #1f262f;
+      --shadow: rgba(0, 0, 0, 0.5); --bezel-edge: #232a33;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0d1117; --surface: #161b22; --surface-2: #11161d; --ink: #e6edf3; --muted: #8d96a0;
+    --line: #2b323b; --accent: #58a6ff; --accent-ink: #0d1117; --claude: #e08a6b; --vs: #58a6ff;
+    --git: #39c5cf; --good: #3fb950; --warn: #d29922; --note-bg: #15233a; --kbd-bg: #1f262f;
+    --shadow: rgba(0, 0, 0, 0.5); --bezel-edge: #232a33;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/1.62 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  img { max-width: 100%; }
+  h1, h2, h3 { font-family: var(--display); line-height: 1.12; text-wrap: balance; margin: 0; }
+  h2 { font-size: 1.85rem; font-weight: 600; letter-spacing: 0.005em; }
+  h3 { font-size: 1.28rem; font-weight: 600; }
+  p { margin: 0; }
+  code, kbd, pre { font-family: var(--mono); }
+  code { font-size: 0.88em; background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 0.05em 0.35em; overflow-wrap: anywhere; }
+  kbd { display: inline-block; font-size: 0.82em; font-weight: 500; line-height: 1.5; padding: 0.02em 0.45em; background: var(--kbd-bg);
+    border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; white-space: nowrap; }
+
+  .page { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 72px; }
+  .eyebrow { font: 500 0.74rem/1.3 var(--mono); letter-spacing: 0.13em; text-transform: uppercase; color: var(--muted); }
+
+  /* ---------- top: intro + device ---------- */
+  .top { display: grid; gap: 36px; align-items: start; padding-block: 12px 40px; border-bottom: 1px solid var(--line); }
+  @media (min-width: 960px) { .top { grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 56px; } }
+  .intro { display: grid; gap: 18px; align-content: start; padding-top: 8px; }
+  h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -0.01em; }
+  .lede { font-size: 1.12rem; max-width: 60ch; color: var(--ink); }
+  .status-line { display: flex; flex-wrap: wrap; gap: 8px 16px; font: 0.86rem/1.4 var(--mono); color: var(--muted); }
+  .status-line span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; font: 600 0.95rem/1 var(--body); padding: 12px 16px; border-radius: 9px;
+    background: var(--accent); color: var(--accent-ink); text-decoration: none; }
+  .btn:hover { filter: brightness(1.06); }
+
+  .device { margin: 0; display: grid; gap: 14px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab { font: 600 0.9rem/1 var(--display); letter-spacing: 0.02em; padding: 9px 13px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--muted); cursor: pointer; }
+  .tab[aria-selected="true"] { color: var(--ink); border-color: var(--ink); }
+  .tab .n { font-family: var(--mono); font-weight: 500; opacity: 0.7; margin-right: 6px; }
+  .bezel { position: relative; background: var(--bezel); border-radius: 26px; padding: 30px 16px 16px; width: 100%; max-width: 380px; justify-self: center;
+    box-shadow: inset 0 0 0 1px var(--bezel-edge), 0 22px 44px -22px var(--shadow); }
+  .bezel .dots { position: absolute; top: 12px; left: 18px; display: flex; gap: 6px; }
+  .bezel .dots i { width: 6px; height: 6px; border-radius: 50%; background: #2a3039; }
+  .bezel .size { position: absolute; top: 9px; right: 18px; font: 500 0.66rem/1 var(--mono); letter-spacing: 0.1em; color: #5b636e; text-transform: uppercase; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 11px; }
+  .key { padding: 0; border: 0; background: none; border-radius: 18px; cursor: pointer; aspect-ratio: 1; max-width: 100%;
+    transition: transform 0.12s ease; }
+  .key img { display: block; width: 100%; height: 100%; border-radius: 18px; }
+  .key:hover { transform: translateY(-1px); }
+  .key[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .key.empty { background: #0e1115; cursor: default; }
+  .key.wide, .key.wide img { border-radius: 0; } /* the slices carry the display's own rounded ends */
+  .banners { display: grid; gap: 14px; max-width: 460px; }
+  .banners figure { margin: 0; display: grid; gap: 6px; }
+  .banners .strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; background: #000; padding: 8px; border-radius: 14px; }
+  .banners .strip img { display: block; width: 100%; border-radius: 10px; }
+  .banners figcaption { font-size: 0.86rem; color: var(--muted); }
+  .keyinfo { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; min-height: 132px; }
+  .keyinfo .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .keyinfo h4 { margin: 0; font: 600 1.05rem/1.25 var(--display); }
+  .keyinfo .pos { font: 0.78rem/1 var(--mono); color: var(--muted); white-space: nowrap; }
+  .keyinfo .does { color: var(--ink); }
+  .keyinfo .sends { font: 0.84rem/1.45 var(--mono); color: var(--muted); }
+
+  /* ---------- body layout ---------- */
+  .layout { display: grid; gap: 40px; padding-top: 36px; }
+  @media (min-width: 1000px) { .layout { grid-template-columns: 200px minmax(0, 1fr); gap: 56px; } }
+  .toc { display: none; }
+  @media (min-width: 1000px) {
+    .toc { display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; }
+  }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .toc a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 0.92rem; }
+  .toc a:hover { color: var(--ink); background: var(--surface); }
+  .toc .sub a { padding-left: 22px; font-size: 0.86rem; }
+  main { display: grid; gap: 56px; min-width: 0; }
+  section { display: grid; gap: 18px; max-width: 76ch; }
+  section > p, .step-body > p { max-width: 68ch; }
+  .section-intro { color: var(--muted); }
+
+  /* flow diagram */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 0.86rem/1.3 var(--mono); }
+  .flow span { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+  .flow b { color: var(--muted); font-weight: 400; }
+  .flow .claude { border-color: var(--claude); color: var(--claude); }
+
+  .parts { display: grid; gap: 0; border-top: 1px solid var(--line); }
+  .part { display: grid; gap: 4px 20px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  @media (min-width: 720px) { .part { grid-template-columns: 190px minmax(0, 1fr); } }
+  .part dt { font-weight: 600; }
+  .part dd { margin: 0; display: grid; gap: 4px; color: var(--muted); }
+  .part dd .path { color: var(--ink); }
+
+  /* steps */
+  .steps { display: grid; gap: 0; }
+  .step { display: grid; gap: 14px; padding-block: 26px; border-top: 1px solid var(--line); }
+  .step-head { display: flex; align-items: center; gap: 14px; }
+  .step-num { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center;
+    font: 700 1.05rem/1 var(--display); background: var(--ink); color: var(--ground); }
+  .step-head h3 { flex: 1; }
+  .done-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 0.86rem; color: var(--muted); cursor: pointer; user-select: none; }
+  .done-toggle input { width: 17px; height: 17px; accent-color: var(--good); }
+  .step.is-done .step-num { background: var(--good); }
+  .step-body { display: grid; gap: 12px; }
+  .step-body ul, .step-body ol { margin: 0; padding-left: 1.25em; display: grid; gap: 7px; max-width: 68ch; }
+  .tag { display: inline-block; font: 600 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 7px; border-radius: 5px; }
+  .tag.ok { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+  .tag.you { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .note { background: var(--note-bg); border-radius: 10px; padding: 12px 14px; max-width: 68ch; }
+  .note strong:first-child { margin-right: 4px; }
+
+  .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 14px; max-width: 76ch; }
+  .states figure { margin: 0; display: grid; gap: 8px; }
+  .states img { width: 100%; max-width: 132px; border-radius: 16px; background: #000; }
+  .states figcaption { font-size: 0.84rem; color: var(--muted); line-height: 1.35; }
+
+  /* code blocks with copy */
+  .code { position: relative; }
+  .code pre { margin: 0; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px; overflow-x: auto;
+    font-size: 0.86rem; line-height: 1.55; }
+  .copy { position: absolute; top: 8px; right: 8px; font: 500 0.74rem/1 var(--mono); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--muted); cursor: pointer; }
+  .copy:hover { color: var(--ink); }
+
+  /* tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th { font: 600 0.72rem/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+  td.thumb { width: 64px; }
+  td.thumb img { width: 48px; height: 48px; border-radius: 9px; display: block; }
+  td .pos { font: 0.76rem/1 var(--mono); color: var(--muted); display: block; margin-top: 4px; }
+  .ref-page h3 { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  details { border-top: 1px solid var(--line); padding-block: 12px; max-width: 72ch; }
+  details:last-of-type { border-bottom: 1px solid var(--line); }
+  summary { cursor: pointer; font-weight: 600; }
+  details > div { display: grid; gap: 10px; padding-top: 10px; color: var(--ink); }
+
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font: 0.82rem/1.5 var(--mono); color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { .key { transition: none; } .key:hover { transform: none; } }
+</style>
+
+<div class="page">
+  <header class="top">
+    <div class="intro">
+      <p class="eyebrow">Womier DUO87 · Play Deck touch screen</p>
+      <h1>Dev Deck</h1>
+      <p class="lede">A developer profile for the Womier DUO87’s touch screen: live Claude Code status you can read at a glance, one-tap prompts and permission answers, AI-written git commits, a wide git display, and VS Code and git keys. This guide covers installing it, using it, and changing it.</p>
+      <div class="status-line">
+        <span><i class="dot" aria-hidden="true"></i>macOS · VS Code · Claude Code</span>
+        <span>3 pages × 12 touch keys</span>
+        <span>Unofficial: not affiliated with Womier or MiraBox</span>
+      </div>
+      <div class="cta">
+        <a class="btn" href="#step-1">Install it</a>
+        <a href="https://github.com/bryanlittlefield/dev-deck">Source on GitHub</a>
+      </div>
+    </div>
+
+    <figure class="device" aria-label="The Dev Deck profile as it appears on the touch screen">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="bezel">
+        <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="size" aria-hidden="true">3 × 4 touch screen</span>
+        <div class="grid" id="grid" role="tabpanel"></div>
+      </div>
+      <figcaption class="keyinfo" id="keyinfo" aria-live="polite"></figcaption>
+    </figure>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="On this page">
+      <ol>
+        <li><a href="#installed">What’s installed</a></li>
+        <li><a href="#walkthrough">Walkthrough</a></li>
+        <li class="sub"><a href="#step-1">1 · Install</a></li>
+        <li class="sub"><a href="#step-2">2 · Hardware</a></li>
+        <li class="sub"><a href="#step-3">3 · Permissions</a></li>
+        <li class="sub"><a href="#step-4">4 · The app &amp; pages</a></li>
+        <li class="sub"><a href="#step-5">5 · Claude Code keys</a></li>
+        <li class="sub"><a href="#step-6">6 · Smart commits</a></li>
+        <li class="sub"><a href="#step-7">7 · VS Code &amp; Git</a></li>
+        <li class="sub"><a href="#step-8">8 · Customize</a></li>
+        <li class="sub"><a href="#step-9">9 · Keyboard macros</a></li>
+        <li class="sub"><a href="#step-10">10 · SSH &amp; Codespaces</a></li>
+        <li><a href="#reference">Reference</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section id="installed">
+        <h2>What’s installed</h2>
+        <p>Everything lives in <code>~/.duo87</code>, a clone of the repo, except the pieces that have to sit inside other apps. <code>duo87 install</code> backs up every file it changes to <code>~/.duo87/backups/</code> first.</p>
+        <div class="flow" aria-label="How the pieces connect">
+          <span class="claude">Claude Code</span><b>hooks →</b><span>~/.duo87/state</span><b>→</b><span>Dev Deck plugin</span><b>→</b><span>touch screen</span><b>tap →</b><span>VS Code / Claude</span>
+        </div>
+        <dl class="parts">
+          <div class="part"><dt>Dev Deck plugin</dt><dd><span>Runs inside the Play Deck app on its bundled Node 20. It draws the live keys, including the wide git display across a row, and does the work when you tap them.</span><span class="path"><code>~/Library/Application Support/HotSpot/StreamDock/plugins/com.duo87.devdeck.sdPlugin</code></span></dd></div>
+          <div class="part"><dt>Dev profile</dt><dd><span>Three pages (Claude, Git, VS Code), set as the active profile. An importable copy doubles as a backup.</span><span class="path"><code>~/.duo87/profile/Dev Deck.streamDockProfile</code></span></dd></div>
+          <div class="part"><dt>Claude Code hook</dt><dd><span>One async hook on 11 events writes each session’s state (prompt, tool, pending approval, last reply). It never blocks Claude, and your existing notifier hooks are untouched.</span><span class="path"><code>~/.claude/settings.json</code> → <code>~/.duo87/bin/claude-status-hook.js</code></span></dd></div>
+          <div class="part"><dt>smart-commit</dt><dd><span>Stages, has Claude Haiku write the message, lets you confirm, commits (signed and signed-off), optionally pushes.</span><span class="path"><code>~/.duo87/bin/smart-commit</code> · settings in <code>~/.duo87/config.json</code></span></dd></div>
+          <div class="part"><dt>VS Code wiring</dt><dd><span>16 keybindings on unused F16–F19 combos and 5 user tasks the touch keys trigger. Nothing else in VS Code is changed.</span><span class="path"><code>~/Library/Application Support/Code/User/keybindings.json</code> and <code>tasks.json</code></span></dd></div>
+          <div class="part"><dt>Remote bridge</dt><dd><span>A small VS Code extension that runs on your Mac. In Remote-SSH, Codespaces and container windows it copies the remote Claude state to your Mac over VS Code’s own connection, so remote sessions show up on the deck.</span><span class="path"><code>duo87.devdeck-bridge</code> · source in <code>~/.duo87/vscode-bridge</code></span></dd></div>
+          <div class="part"><dt>Remote kit</dt><dd><span>The hook and smart-commit, packaged for SSH hosts and codespaces. You install it per machine; nothing is installed remotely until you do.</span><span class="path"><code>duo87 remote &lt;host&gt;</code> · <code>duo87 codespace &lt;name&gt;</code> · <code>duo87 kit</code></span></dd></div>
+          <div class="part"><dt>duo87-keys</dt><dd><span>A tiny native helper (Swift source included) that brings an app forward, presses shortcuts, and pastes prompts while keeping your clipboard intact.</span><span class="path"><code>~/.duo87/bin/duo87-keys</code> · <code>~/.duo87/src/duo87-keys.swift</code></span></dd></div>
+          <div class="part"><dt>duo87 tool</dt><dd><span>Rebuilds and reinstalls everything from <code>layout.json</code>, checks health, shows what the deck sees.</span><span class="path"><code>~/.duo87/bin/duo87 install | doctor | status | guide</code></span></dd></div>
+        </dl>
+      </section>
+
+      <section id="walkthrough">
+        <h2>Walkthrough</h2>
+        <p class="section-intro">Tick each step off as you go; the checkmarks are remembered in this browser.</p>
+        <div class="steps">
+
+          <article class="step" id="step-1" data-step="1">
+            <div class="step-head"><span class="step-num">1</span><h3>Install</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-1"> Done</label></div>
+            <div class="step-body">
+              <p>You need a Mac with the <a href="https://www.womierkeyboard.com/pages/softwares" target="_blank" rel="noopener">DUO87 Play Deck app</a>, Node.js 18 or newer (with npm), the Xcode Command Line Tools (<code>xcode-select --install</code>), and VS Code with the Claude Code extension. The Claude Code CLI writes commit messages; without it you get a basic message to edit. ImageMagick (crisper default images) and <code>gh</code> (the PR keys) are optional.</p>
+              <div class="code"><pre id="c-get">git clone https://github.com/bryanlittlefield/dev-deck.git ~/.duo87
+~/.duo87/bin/duo87 install</pre><button class="copy" data-copy="c-get" type="button">Copy</button></div>
+              <p>It has to live in <code>~/.duo87</code>: the plugin, the Claude hook and the VS Code tasks look for it there. <code>install</code> builds the key images and the Dev profile, copies the plugin into the Play Deck app and makes the profile active, adds the VS Code keybindings and tasks, registers the Claude Code hook, installs the bridge extension, and restarts the Play Deck app. Every file it changes is backed up to <code>~/.duo87/backups/</code> first.</p>
+              <p><strong>To update:</strong> <code>git -C ~/.duo87 pull &amp;&amp; ~/.duo87/bin/duo87 install</code>. Then run <code>duo87 doctor</code> to check every piece.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-2" data-step="2">
+            <div class="step-head"><span class="step-num">2</span><h3>Check the hardware</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-2"> Done</label></div>
+            <div class="step-body">
+              <ul>
+                <li><strong>Seat the screen module</strong> on the magnetic contacts where the Ins/Home/PgUp cluster sits. Those nav keys still exist on the Play Deck’s built-in <em>Keyboard</em> profile if you need them.</li>
+                <li><strong>Put the keyboard in Mac mode:</strong> press <kbd>Fn</kbd>+<kbd>Z</kbd> (the Z key flashes white). <kbd>Fn</kbd>+<kbd>X</kbd> switches back to Windows mode.</li>
+                <li><strong>Plug it straight into the Mac</strong> with the USB-C cable that came with it. Hubs are the usual cause of the screen disconnecting.</li>
+              </ul>
+              <p class="note"><strong>Good to know:</strong> in Mac mode the top row is media keys, and <kbd>Fn</kbd>+<kbd>F1</kbd>–<kbd>F12</kbd> gives real F-keys. The touch keys send real key codes, so they work either way.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-3" data-step="3">
+            <div class="step-head"><span class="step-num">3</span><h3>Confirm macOS permissions</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-3"> Done</label></div>
+            <div class="step-body">
+              <ul>
+                <li><strong>Accessibility:</strong> turn it on for <em>DUO87_Play_Deck</em> under System Settings → Privacy &amp; Security → Accessibility. It’s what lets the keys press shortcuts. <code>duo87 install</code> and <code>duo87 doctor</code> tell you if it’s missing.</li>
+                <li><strong>Automation → System Events:</strong> Womier’s own <em>Hotkey</em> and <em>Text</em> actions need this. If macOS asks, allow it. The Dev Deck keys don’t need it.</li>
+                <li><strong>Notifications:</strong> smart-commit posts a notification when it finishes. They appear under <em>Script Editor</em> in Notification settings, so allow that if you want them.</li>
+              </ul>
+              <p>After changing a permission, quit the Play Deck app from its menu-bar icon and open it again.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-4" data-step="4">
+            <div class="step-head"><span class="step-num">4</span><h3>Open the app and find your pages</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-4"> Done</label></div>
+            <div class="step-body">
+              <p>After installing, the <strong>Dev Deck</strong> profile is active and the screen should look like the preview at the top of this page.</p>
+              <ul>
+                <li><strong>The screen is 3 keys wide and 4 tall.</strong> The preview above matches it key for key.</li>
+                <li><strong>Moving between pages:</strong> the bottom-right key goes to the next page, and on the last page it goes back to the first. If you reorder pages in the app, run <code>duo87 install</code> afterwards so those keys follow your new order.</li>
+                <li><strong>Other profiles</strong> (Keyboard, Touchbar, Scenes 1) are a click away in the app window.</li>
+                <li><strong>The app window</strong> opens from the menu-bar icon. Click any key to see its settings on the right; Dev Deck keys have their own fields (label, prompt, shortcut, icon, color).</li>
+              </ul>
+              <p class="note"><strong>If a key looks blank or black,</strong> see <a href="#ts-blank">Keys are blank</a> in Troubleshooting. It’s a one-line setting.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-5" data-step="5">
+            <div class="step-head"><span class="step-num">5</span><h3>Drive Claude Code from the deck</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-5"> Done</label></div>
+            <div class="step-body">
+              <p>The Claude page is built around Claude Code in the VS Code sidebar. The top row is what Claude is doing, with Allow and Deny right beside it. The second row is your last prompt, Focus and New Chat. The bottom two rows hold saved prompts, Smart Commit and the page key.</p>
+              <div class="states" id="states"></div>
+              <ul>
+                <li><strong>Claude status</strong> (top-left) updates live from every session: <em>Working</em> with the tool and a timer, amber <em>Approve?</em> with what Claude wants to run, <em>Question</em>, green <em>Done</em>, or red <em>Error</em>. A number badge means several sessions are busy. Tap it to jump to that session’s VS Code window with the cursor in Claude’s input.</li>
+                <li><strong>YOU</strong> shows your last prompt; tap to copy all of it.</li>
+                <li><strong>Allow / Deny</strong> stay dim until Claude asks for permission, then Allow blinks green. Allow presses <kbd>1</kbd> and Deny presses <kbd>Esc</kbd> in the Claude panel. While Claude is working, Deny becomes <em>Stop</em> and interrupts it.</li>
+                <li><strong>Review, Explain, Write Tests, Fix Build</strong> paste a saved prompt into Claude and send it. Select code before tapping <em>Explain</em> and it’s attached as context.</li>
+                <li><strong>Claude</strong> (Focus) and <strong>New Chat</strong> jump to the input or start a fresh conversation.</li>
+              </ul>
+              <p><strong>Try it:</strong> with some uncommitted changes, tap <em>Review</em>. The status key flips to <em>Working</em> and back to <em>Done</em>. Then ask Claude to run a command it has to ask about (like <code>npm outdated</code>) and answer it with <em>Allow</em>.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-6" data-step="6">
+            <div class="step-head"><span class="step-num">6</span><h3>Make a smart commit</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-6"> Done</label></div>
+            <div class="step-body">
+              <div class="flow" aria-label="What happens when you tap Commit">
+                <span>Tap Commit</span><b>→</b><span>VS Code task</span><b>→</b><span>stage if needed</span><b>→</b><span class="claude">Claude Haiku writes it</span><b>→</b><span>you edit / confirm</span><b>→</b><span>commit (+ push)</span>
+              </div>
+              <ol>
+                <li>Have a folder open in VS Code with changes, then tap <strong>Commit</strong> (Claude page) or <strong>Commit+Push</strong> (Git page).</li>
+                <li>VS Code runs the <em>DUO87: Smart Commit</em> task in that window’s workspace, and the key shows <em>Writing…</em>. If nothing is staged, everything is staged (<code>git add -A</code>); if you staged some files yourself, only those are committed.</li>
+                <li>Claude writes a message matching your recent commits (Conventional Commits, ticket IDs from the branch name, and a short body only when the change needs one). That takes about 2–4 seconds and costs a fraction of a cent: no tools, no thinking, and your notifier hooks stay quiet.</li>
+                <li>A dialog shows the message. Edit it if you like, then choose <kbd>Commit</kbd>, <kbd>Commit &amp; Push</kbd>, or <kbd>Cancel</kbd>. Cancel un-stages whatever smart-commit staged.</li>
+                <li>The key shows the new short hash for two minutes. Commits get <code>Signed-off-by</code> (turn that off with <code>commit.signoff</code>) and are signed however your git config signs commits.</li>
+              </ol>
+              <p>It works from any terminal too:</p>
+              <div class="code"><pre id="c-smart">~/.duo87/bin/smart-commit            # current repo, with the dialog
+~/.duo87/bin/smart-commit --dry-run  # just print the message
+~/.duo87/bin/smart-commit ~/Sites/app --push --yes</pre><button class="copy" data-copy="c-smart" type="button">Copy</button></div>
+              <p>Settings (model, dialog on/off, sign-off, a Co-Authored-By trailer, notifications) are under <code>"commit"</code> in <code>~/.duo87/config.json</code>. See <a href="#ref-config">Config options</a>.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-7" data-step="7">
+            <div class="step-head"><span class="step-num">7</span><h3>Use the VS Code and Git pages</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-7"> Done</label></div>
+            <div class="step-body">
+              <p><strong>The VS Code page</strong> holds the VS Code shortcuts you reach for most: Command Palette, Go to File, Search, Terminal, Go to Definition, Rename, Format, Comment, Sidebar, Split, and Source Control. Each key brings VS Code forward first, so it works even when your browser has focus.</p>
+              <p><strong>The Git page</strong> covers git. Its top row is one <strong>wide display</strong> instead of three separate keys, so nothing is squeezed into a single tile. It shows the repo, the full branch name, how many files changed, lines added and removed, commits ahead of and behind the remote, how long ago you last committed, and any merge, rebase or conflicts in progress. The branch breaks after <code>/</code> or <code>-</code> so no word is split by the gaps between keys. It follows the repo of the Claude session you prompted most recently (sessions outside a git repo are skipped), SSH and Codespaces included, and refreshes every few seconds.</p>
+              <div class="banners" id="banners"></div>
+              <ul>
+                <li><strong>Tap the left third</strong> to switch branch, and <strong>the rest</strong> to open Source Control. Nothing on the display pushes, because VS Code’s Sync pushes without asking when <code>git.confirmSync</code> is off; pushing stays on the Push and Commit+Push keys. To change what a part does, select it in the app and pick <em>Tap</em>.</li>
+                <li>Below it: Commit+Push, Pull, Push, Stash, Undo Commit, GitHub, Create PR and View PR. The PR keys use <code>gh</code>.</li>
+              </ul>
+              <p>Keys that trigger VS Code commands without a default shortcut use combos on <kbd>F16</kbd>–<kbd>F19</kbd>, which no physical key sends, so they can’t collide with anything. The full list is in <a href="#ref-hyper">F16–F19 bindings</a>.</p>
+              <p class="note"><strong>Add your own:</strong> pick an unused combo such as <code>shift+f16</code>, bind it to any command in VS Code’s <code>keybindings.json</code>, then add a Dev Deck <em>Shortcut</em> key that sends it.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-8" data-step="8">
+            <div class="step-head"><span class="step-num">8</span><h3>Customize keys and prompts</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-8"> Done</label></div>
+            <div class="step-body">
+              <p>There are two ways to change the deck. Pick one per change:</p>
+              <ul>
+                <li><strong>In the app</strong> (quick tweaks): select a key and edit its fields on the right. To add keys, drag actions from the <em>Dev Deck</em> category in the Function Library: Claude Status, Claude Prompt / Reply, Answer Claude, Focus Claude, Claude Prompt, Smart Commit, Repo Status, Wide Display, Shortcut, Run Command.</li>
+                <li><strong>As code</strong> (repeatable, versionable): edit <code>~/.duo87/profile/layout.json</code>, then reinstall. Each page lists the screen’s rows from top to bottom, three keys per row; <code>null</code> leaves a key empty. <code>~/.duo87</code> is a git clone, so commit your layout (or keep it on a fork).</li>
+              </ul>
+              <div class="code"><pre id="c-install">~/.duo87/bin/duo87 install   # rebuild the profile + restart the Play Deck app
+~/.duo87/bin/duo87 guide     # refresh this guide from layout.json</pre><button class="copy" data-copy="c-install" type="button">Copy</button></div>
+              <p class="note"><strong>Heads-up:</strong> <code>duo87 install</code> rewrites the Dev profile’s keys from <code>layout.json</code>, so in-app key edits are replaced. Put changes you want to keep in the file. Your page order, and any pages you add in the app, are kept.</p>
+              <p><strong>Make any row wide:</strong> put two or three <em>Wide Display</em> keys side by side in one screen row and they join into one display. In <code>layout.json</code> that’s a row like <code>[{ "action": "banner" }, { "action": "banner" }, { "action": "banner" }]</code>. In the app, count keys left to right, top to bottom: the app lays the same 12 keys out on its own 4 × 3 grid, but the screen shows them in that same order, three per row. So screen row 1 is keys 1–3, row 2 is keys 4–6, and so on.</p>
+              <p>Prompt ideas worth a key:</p>
+              <div class="code"><pre id="c-prompts">/compact
+Summarize what changed on this branch compared to main, as a PR description.
+Find the bug in the selected code and fix it. Explain the root cause in one line.
+Add logging around the selected code so I can see what it does at runtime.
+Refactor the selected code for readability without changing behavior. Run the tests.</pre><button class="copy" data-copy="c-prompts" type="button">Copy</button></div>
+            </div>
+          </article>
+
+          <article class="step" id="step-9" data-step="9">
+            <div class="step-head"><span class="step-num">9</span><h3>Optional: program the keyboard itself with VIA</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-9"> Done</label></div>
+            <div class="step-body">
+              <p>The touch screen is set up in Play Deck; the <em>keys</em> are set up in VIA, and the two don’t affect each other. VIA macros can send the same F16–F19 combos, so physical keys can trigger Smart Commit or focus Claude too.</p>
+              <ol>
+                <li>Download the DUO87 JSON from <a href="https://www.womierkeyboard.com/pages/softwares" target="_blank" rel="noopener">womierkeyboard.com/pages/softwares</a>.</li>
+                <li>Open <a href="https://usevia.app/" target="_blank" rel="noopener">usevia.app</a> in Chrome or Edge (it needs WebHID; Safari won’t work).</li>
+                <li>Settings → turn on <em>Show Design tab</em>. Design → load the DUO87 JSON.</li>
+                <li>Configure → <em>Authorize device</em> and pick the DUO87.</li>
+                <li>Macros tab: paste the macros below into <code>M0</code>, <code>M1</code>, and so on.</li>
+                <li>Keymap → Layer 1 (the Fn layer): assign the macros to free keys, for example <kbd>Fn</kbd>+<kbd>C</kbd> for Smart Commit and <kbd>Fn</kbd>+<kbd>K</kbd> for Focus Claude.</li>
+              </ol>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Macro</th><th>Paste this</th><th>Does</th></tr></thead>
+                <tbody>
+                  <tr><td>M0</td><td><code>{KC_LCTL,KC_LALT,KC_F18}</code></td><td>Smart Commit</td></tr>
+                  <tr><td>M1</td><td><code>{KC_LCTL,KC_LALT,KC_F19}</code></td><td>Smart Commit + Push</td></tr>
+                  <tr><td>M2</td><td><code>{KC_LCTL,KC_LALT,KC_F16}</code></td><td>Focus Claude input</td></tr>
+                  <tr><td>M3</td><td><code>{KC_LCTL,KC_LALT,KC_F17}</code></td><td>New Claude chat</td></tr>
+                  <tr><td>M4</td><td><code>git status{KC_ENT}</code></td><td>Types and runs <code>git status</code> in a focused terminal</td></tr>
+                </tbody>
+              </table></div>
+              <p class="note"><strong>Don’t overwrite built-in Fn combos:</strong> Fn with F1–F12, Space, Enter, the arrows, Right Shift, Right Ctrl, App, Win, Caps Lock, W, Z and X already do something on this board. Assign macros to keys that show as empty on layer 1.</p>
+              <p><strong>Screensaver:</strong> in the Play Deck app’s Screensaver mode you can upload a <strong>320×480</strong> JPG, PNG or GIF to loop while idle.</p>
+            </div>
+          </article>
+
+          <article class="step" id="step-10" data-step="10">
+            <div class="step-head"><span class="step-num">10</span><h3>Use it over Remote-SSH and Codespaces</h3>
+              <label class="done-toggle"><input type="checkbox" id="done-10"> Done</label></div>
+            <div class="step-body">
+              <p>In a remote window, VS Code runs Claude Code <em>on the remote machine</em>, along with its hooks and git. The deck still presses keys in your local VS Code window, so anything that’s just a shortcut works as-is. The live keys need two pieces: the bridge on your Mac (installed by <code>duo87 install</code>) and the remote kit on each machine you use Claude on.</p>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Keys</th><th>On your Mac</th><th>SSH / Codespaces</th></tr></thead>
+                <tbody>
+                  <tr><td>VS Code page, git keys, prompts, Focus, New Chat</td><td>Works</td><td>Works, no setup</td></tr>
+                  <tr><td>Claude status, last prompt, Allow / Deny</td><td>Works</td><td>With the remote kit. The status header reads <em>SSH</em> or <em>CODESPACE</em>, and tapping it focuses that remote window.</td></tr>
+                  <tr><td>Repo status and the wide git display</td><td>Live</td><td>With the kit: refreshed after each Claude step and each Smart Commit</td></tr>
+                  <tr><td>Smart Commit</td><td>macOS dialog</td><td>With the kit: confirm in the task terminal (Enter / p / e / n). It uses the Claude CLI bundled with the remote Claude extension, so sign in there once.</td></tr>
+                  <tr><td>Create / View PR, GitHub</td><td><code>gh</code></td><td>Needs <code>gh</code> on the remote. Codespaces already has it.</td></tr>
+                </tbody>
+              </table></div>
+              <ol>
+                <li><strong>SSH hosts:</strong> for each host you run Claude on, install the kit over your normal SSH config (the same one VS Code uses):
+                  <div class="code"><pre id="c-remote">~/.duo87/bin/duo87 remote dev-box                 # a Host from ~/.ssh/config
+~/.duo87/bin/duo87 remote staging.example.com --dry-run   # show what it would do</pre><button class="copy" data-copy="c-remote" type="button">Copy</button></div>
+                  It only writes <code>~/.duo87</code> and adds one hook to <code>~/.claude/settings.json</code> (backed up on the host). Host names containing “PROD” are refused unless you add <code>--force</code>.</li>
+                <li><strong>A running codespace:</strong> <code>gh codespace list</code>, then <code>~/.duo87/bin/duo87 codespace &lt;name&gt;</code>.</li>
+                <li><strong>Every new codespace:</strong> export the kit into your dotfiles repo, and turn on dotfiles in GitHub → Settings → Codespaces:
+                  <div class="code"><pre id="c-kit">~/.duo87/bin/duo87 kit ~/path/to/dotfiles/duo87
+# then add to the dotfiles repo's install.sh:
+sh "$(dirname "$0")/duo87/install.sh"</pre><button class="copy" data-copy="c-kit" type="button">Copy</button></div></li>
+                <li><strong>Reload</strong> any remote window that was already open, then send Claude a prompt there. The status key should switch to the SSH or CODESPACE heading.</li>
+                <li><strong>After updating the deck,</strong> run the same <code>duo87 remote</code> command again on hosts that already have the kit. It’s safe to repeat, and it brings their git snapshots up to the full wide display (lines changed, last commit, staged files, rebases). Older kits still show branch, changes and ahead/behind.</li>
+              </ol>
+              <p class="note"><strong>Shared logins:</strong> on hosts where the whole team signs in as one SSH user (common on Kinsta and SiteGround), that user’s <code>~/.claude/settings.json</code> is shared, so everyone using Claude there gets the hook too. It only writes status files; they’re private to that user (mode 600).</p>
+              <p><strong>Not covered:</strong> Codespaces opened in a browser tab (the deck drives the VS Code app), Claude run in a plain <code>ssh</code> terminal outside VS Code, and commits made on a remote, which use that machine’s git identity and signing setup.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="reference">
+        <h2>Reference</h2>
+        <div id="ref-pages" class="ref-pages" style="display:grid;gap:28px"></div>
+
+        <h3 id="ref-hyper">F16–F19 bindings</h3>
+        <p>These live in VS Code’s user <code>keybindings.json</code>. The touch keys send them; VIA macros can too.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Keys</th><th>keybindings.json</th><th>Runs</th></tr></thead>
+          <tbody>
+<!--__HYPER_ROWS__-->
+          </tbody>
+        </table></div>
+
+        <h3>Commands</h3>
+        <div class="code"><pre id="c-cmds">~/.duo87/bin/duo87 doctor    # check every piece
+~/.duo87/bin/duo87 status    # what the deck sees: Claude sessions, last commit
+~/.duo87/bin/duo87 install   # rebuild + reinstall plugin and profile, restart the app
+~/.duo87/bin/duo87 build     # render images + profile only
+~/.duo87/bin/duo87 guide     # regenerate this guide
+~/.duo87/bin/duo87 hooks     # re-add the Claude Code hook
+~/.duo87/bin/duo87 vscode    # re-add the VS Code keybindings and tasks
+~/.duo87/bin/duo87 bridge    # reinstall the VS Code bridge for remote windows
+~/.duo87/bin/duo87 remote "&lt;ssh-host&gt;" [--dry-run] [--force]   # remote kit on an SSH host
+~/.duo87/bin/duo87 codespace &lt;name&gt;                          # remote kit in a codespace
+~/.duo87/bin/duo87 kit [dir]                                 # export the kit (dotfiles)</pre><button class="copy" data-copy="c-cmds" type="button">Copy</button></div>
+
+        <h3 id="ref-config">Config options</h3>
+        <p><code>~/.duo87/config.json</code>. Changes to <code>commit</code> apply on the next commit; changes to <code>deck</code> apply after restarting the Play Deck app.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>commit.model</code></td><td><code>"haiku"</code></td><td>Any <code>claude --model</code> value. Try <code>"sonnet"</code> for trickier diffs.</td></tr>
+            <tr><td><code>commit.confirm</code></td><td><code>true</code></td><td>Show the edit/confirm dialog. <code>false</code> commits straight away.</td></tr>
+            <tr><td><code>commit.signoff</code></td><td><code>true</code></td><td>Add <code>Signed-off-by</code>.</td></tr>
+            <tr><td><code>commit.stageAll</code></td><td><code>true</code></td><td>Stage everything when nothing is staged.</td></tr>
+            <tr><td><code>commit.maxDiffKB</code></td><td><code>60</code></td><td>How much of the diff Claude sees. Lockfiles and minified files are always left out.</td></tr>
+            <tr><td><code>commit.trailer</code></td><td><code>""</code></td><td>Appended to every message, e.g. <code>Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;</code>.</td></tr>
+            <tr><td><code>commit.notify</code></td><td><code>true</code></td><td>macOS notification when a commit finishes.</td></tr>
+            <tr><td><code>deck.imageFormat</code></td><td><code>"svg"</code></td><td><code>"png"</code> rasterizes keys first (no animations). Only needed if keys show blank.</td></tr>
+            <tr><td><code>deck.screenColumns</code></td><td><code>3</code></td><td>Keys per screen row, used to line up wide displays and <code>layout.json</code> rows. The DUO87 screen is 3 wide; change it only for a different screen.</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Files</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Path</th><th>What</th></tr></thead>
+          <tbody>
+            <tr><td><code>~/.duo87/profile/layout.json</code></td><td>The keys on each page (source of truth)</td></tr>
+            <tr><td><code>~/.duo87/docs/</code></td><td>This guide (<code>index.html</code>, rebuilt by <code>duo87 guide</code>) and the Markdown docs</td></tr>
+            <tr><td><code>~/.duo87/config.json</code></td><td>Your settings (optional; see <code>config.example.json</code>)</td></tr>
+            <tr><td><code>~/.duo87/plugin/com.duo87.devdeck.sdPlugin</code></td><td>Plugin source (<code>plugin/index.js</code>, <code>render.js</code>, settings panel)</td></tr>
+            <tr><td><code>~/.duo87/state/claude/*.json</code></td><td>Live Claude session state written by the hook</td></tr>
+            <tr><td><code>~/.duo87/state/commit.json</code></td><td>Last smart-commit result (drives the Commit key)</td></tr>
+            <tr><td><code>~/.duo87/bin/git-info.js</code></td><td>Reads git status for the wide display and the hook (runs with optional locks off, so it never holds <code>index.lock</code>)</td></tr>
+            <tr><td><code>~/.duo87/logs/plugin.log</code></td><td>Plugin log: connections, Accessibility check, failed keys</td></tr>
+            <tr><td><code>~/.duo87/vscode/</code></td><td>Templates for the VS Code keybindings and tasks</td></tr>
+            <tr><td><code>~/.duo87/backups/</code></td><td>Copies of every file changed, one folder per install</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <div>
+          <details id="ts-blank"><summary>Keys are blank or black</summary><div>
+            <p>The keys are drawn as SVG, which the Play Deck app supports. If your firmware or app version shows them blank, switch to PNG mode: add <code>"deck": { "imageFormat": "png" }</code> to <code>~/.duo87/config.json</code>, then quit and reopen the Play Deck app. Keys stop animating in PNG mode but show the same information.</p>
+          </div></details>
+          <details><summary>Tapping a key does nothing, or it flashes a warning</summary><div>
+            <p>Run <code>~/.duo87/bin/duo87 doctor</code>. A warning flash usually means Accessibility was turned off for <em>DUO87_Play_Deck</em>, or the key has nothing to do (for example Allow with no pending request). Failed keys are logged in <code>~/.duo87/logs/plugin.log</code>.</p>
+          </div></details>
+          <details><summary>A “1” ended up in my file instead of approving</summary><div>
+            <p>The approve keys send <kbd>1</kbd> only after focusing Claude, and only while the status key shows <em>Approve?</em>. If the Claude sidebar was closed, open it once (tap the Claude key), then try again.</p>
+          </div></details>
+          <details><summary>Smart Commit didn’t start</summary><div>
+            <p>The task runs in the frontmost VS Code window and needs a folder open. Run it by hand to see the error: Command Palette → <em>Tasks: Run Task</em> → <em>DUO87: Smart Commit</em>. If signing fails, check that your SSH signing key is loaded (<code>ssh-add -l</code>).</p>
+          </div></details>
+          <details><summary>The wide display looks split, or its parts are out of order</summary><div>
+            <p>Its keys have to sit side by side in the same <em>screen</em> row. In the app, count keys left to right, top to bottom, three per screen row. The plugin logs where each part sits (<code>wide display key</code> lines in <code>~/.duo87/logs/plugin.log</code>). If it shows the wrong repo, set <em>Repo path</em> on its left key.</p>
+          </div></details>
+          <details><summary>The status key is stuck on Working</summary><div>
+            <p>A session that crashes never reports that it ended. Stale sessions drop off after two hours; <code>duo87 status</code> lists what the deck sees.</p>
+          </div></details>
+          <details><summary>A remote session doesn’t show on the deck</summary><div>
+            <p>In that remote window, run <em>DUO87 Dev Deck: Show Bridge Status</em> from the Command Palette. If it says there’s no <code>~/.duo87/state</code>, install the kit there (<code>duo87 remote</code> or <code>duo87 codespace</code>). If the remote keeps home somewhere unusual, set <code>duo87.remoteStateDir</code> in VS Code settings to its <code>~/.duo87/state</code> path.</p>
+          </div></details>
+          <details><summary>Smart Commit fails in a remote window</summary><div>
+            <p>“No such file” means the kit isn’t installed on that machine yet. “Claude could not write the message” means the remote Claude CLI isn’t signed in: run <code>claude</code> once in a terminal there. Without Claude you still get a basic message you can edit.</p>
+          </div></details>
+          <details><summary>After a Play Deck app update, keys went back to defaults</summary><div>
+            <p>Run <code>~/.duo87/bin/duo87 install</code>. It re-copies the plugin and profile and makes Dev Deck active again.</p>
+          </div></details>
+          <details><summary>Remove everything</summary><div>
+            <ol>
+              <li>In the Play Deck app, delete the Dev Deck profile, then quit the app and remove the <code>com.duo87.devdeck.sdPlugin</code> folder from its plugins directory.</li>
+              <li>In Claude Code, open <code>/hooks</code> and remove the <code>claude-status-hook.js</code> entries (or restore <code>settings.json</code> from <code>~/.duo87/backups/</code>).</li>
+              <li>Delete the <code>DUO87</code> entries from VS Code’s user <code>keybindings.json</code> and <code>tasks.json</code>, and run <code>code --uninstall-extension duo87.devdeck-bridge</code>.</li>
+              <li>On each remote where you installed the kit, remove the <code>claude-status-hook.js</code> entries from <code>~/.claude/settings.json</code> (a <code>.duo87-backup-*</code> copy sits next to it) and delete <code>~/.duo87</code>.</li>
+              <li>Delete <code>~/.duo87</code> (the clone, with its backups and state).</li>
+            </ol>
+          </div></details>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>Generated __GENERATED__ from <span>profile/layout.json</span> · rebuild with <span>duo87 guide</span> · <a href="https://github.com/bryanlittlefield/dev-deck">source</a> · Unofficial; not affiliated with Womier or MiraBox.</footer>
+</div>
+
+<script>
+(function () {
+  var DECK = /*__DECK__*/[];
+  var STATES = /*__STATES__*/[];
+  var BANNERS = /*__BANNERS__*/[];
+  var PAGE_COLORS = ['var(--claude)', 'var(--vs)', 'var(--git)'];
+  var current = 0;
+  var selected = '0,0';
+
+  function el(tag, attrs, children) {
+    var n = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === 'text') n.textContent = attrs[k];
+      else if (k === 'className') n.className = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+
+  function coords(pos) {
+    var p = pos.split(',');
+    return 'row ' + (+p[1] + 1) + ', key ' + (+p[0] + 1);
+  }
+
+  function showKey(key) {
+    var box = document.getElementById('keyinfo');
+    box.innerHTML = '';
+    if (!key) return;
+    box.appendChild(el('div', { className: 'head' }, [el('h4', { text: key.title }), el('span', { className: 'pos', text: coords(key.pos) })]));
+    box.appendChild(el('p', { className: 'does', text: key.does }));
+    if (key.sends) box.appendChild(el('p', { className: 'sends', text: key.sends }));
+  }
+
+  function renderGrid() {
+    var page = DECK[current];
+    var grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    grid.setAttribute('aria-label', 'Page ' + page.index + ': ' + page.name);
+    var byPos = {};
+    page.keys.forEach(function (k) { byPos[k.pos] = k; });
+    for (var r = 0; r < 4; r++) {
+      for (var c = 0; c < 3; c++) {
+        var pos = c + ',' + r;
+        var key = byPos[pos];
+        if (!key) { grid.appendChild(el('span', { className: 'key empty', 'aria-hidden': 'true' })); continue; }
+        var b = el('button', { className: 'key' + (key.wide ? ' wide' : ''), type: 'button', 'aria-pressed': String(pos === selected), 'aria-label': key.title }, [
+          el('img', { src: key.img, alt: '' }),
+        ]);
+        b.addEventListener('click', (function (k) { return function () { selected = k.pos; renderGrid(); showKey(k); }; })(key));
+        grid.appendChild(b);
+      }
+    }
+    showKey(byPos[selected] || page.keys[0]);
+  }
+
+  function renderTabs() {
+    var tabs = document.getElementById('tabs');
+    tabs.innerHTML = '';
+    DECK.forEach(function (page, i) {
+      var t = el('button', { className: 'tab', type: 'button', role: 'tab', 'aria-selected': String(i === current), id: 'tab-' + page.index }, [
+        el('span', { className: 'n', text: String(page.index) }), document.createTextNode(page.name),
+      ]);
+      t.addEventListener('click', function () { current = i; selected = '0,0'; renderTabs(); renderGrid(); });
+      tabs.appendChild(t);
+    });
+  }
+
+  function renderBanners() {
+    var box = document.getElementById('banners');
+    BANNERS.forEach(function (b) {
+      var strip = el('div', { className: 'strip' }, b.imgs.map(function (src) { return el('img', { src: src, alt: '' }); }));
+      box.appendChild(el('figure', {}, [strip, el('figcaption', { text: b.caption })]));
+    });
+  }
+
+  function renderStates() {
+    var box = document.getElementById('states');
+    STATES.forEach(function (s) {
+      box.appendChild(el('figure', {}, [el('img', { src: s.img, alt: s.caption }), el('figcaption', { text: s.caption })]));
+    });
+  }
+
+  function renderReference() {
+    var root = document.getElementById('ref-pages');
+    DECK.forEach(function (page, i) {
+      var rows = page.keys.map(function (k) {
+        return el('tr', {}, [
+          el('td', { className: 'thumb' }, [el('img', { src: k.img, alt: '' })]),
+          el('td', {}, [el('strong', { text: k.title }), el('span', { className: 'pos', text: coords(k.pos) })]),
+          el('td', { text: k.does }),
+          el('td', {}, [el('code', { text: k.sends || '' })]),
+        ]);
+      });
+      var table = el('table', {}, [
+        el('thead', {}, [el('tr', {}, [el('th', { text: 'Key' }), el('th', { text: 'Name' }), el('th', { text: 'What it does' }), el('th', { text: 'Sends' })])]),
+        el('tbody', {}, rows),
+      ]);
+      var sw = el('span', { className: 'swatch', 'aria-hidden': 'true' });
+      sw.style.background = PAGE_COLORS[i % PAGE_COLORS.length];
+      root.appendChild(el('div', { className: 'ref-page' }, [
+        el('h3', {}, [sw, document.createTextNode('Page ' + page.index + ' · ' + page.name)]),
+        el('div', { className: 'table-wrap' }, [table]),
+      ]));
+    });
+  }
+
+  function wireCopy() {
+    Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (btn) {
+      btn.addEventListener('click', function () {
+        var pre = document.getElementById(btn.getAttribute('data-copy'));
+        var text = pre.textContent;
+        var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1400); };
+        var fallback = function () {
+          var range = document.createRange();
+          range.selectNodeContents(pre);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          btn.textContent = 'Selected: press ⌘C';
+        };
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+          else fallback();
+        } catch (e) { fallback(); }
+      });
+    });
+  }
+
+  function wireSteps() {
+    var KEY = 'duo87-guide-steps';
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+    Array.prototype.forEach.call(document.querySelectorAll('.step'), function (step) {
+      var n = step.getAttribute('data-step');
+      var box = document.getElementById('done-' + n);
+      box.checked = Boolean(saved[n]);
+      step.classList.toggle('is-done', box.checked);
+      box.addEventListener('change', function () {
+        saved[n] = box.checked;
+        step.classList.toggle('is-done', box.checked);
+        try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* storage unavailable */ }
+      });
+    });
+  }
+
+  renderTabs();
+  renderGrid();
+  renderStates();
+  renderBanners();
+  renderReference();
+  wireCopy();
+  wireSteps();
+})();
+</script>
